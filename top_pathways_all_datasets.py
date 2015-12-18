@@ -2,7 +2,6 @@ from scipy.stats.stats import pearsonr
 from scipy.stats import fisher_exact
 import operator
 from collections import OrderedDict
-from selectTopGene import selectTopGenes
 import numpy as np
 import sys
 import random
@@ -12,16 +11,18 @@ import random
 ### Uses Fisher's test to then use the gene rankings to find most similar
 ### pathways.
 
-P_THRESHOLD = 0.01
+P_THRESHOLD = 0.05
 PEARSON_THRESH = 0.1
 
 print 'Extracting NCI pathways...'
 path_file = open('./data/nci_pathway.txt', 'r')
 pathnames = []
 nci_path_dct = {}
+nci_genes = set([])
 for line in path_file:
     line = line.split('\t')
     path_name, path_gene = line[0], line[1][:-2]
+    nci_genes.add(path_gene)
     if path_name not in nci_path_dct:
         nci_path_dct[path_name] = [path_gene]
     else:
@@ -68,25 +69,28 @@ def write_genes_pathways(data_dct, run):
                 drug_top_genes[gene] = p_value
         top_genes = sorted(drug_top_genes.items(), key=operator.itemgetter(1))
         # g, d: Gene-Drug Pair.
+        assert (False not in [pcc <= 0.05 for gene, pcc in top_genes])
         top_genes = [gene for gene, pcc in top_genes]
         # Compute the top pathways for each drug.
         top_pathways = {}
-        pathway_stats = {}
         for path in nci_path_dct:
             path_genes = set(nci_path_dct[path])
-            num_genes = 2 * len(path_genes)
-            corr_genes = set(top_genes[:num_genes])
+            # num_genes = 2 * len(path_genes)
+            # corr_genes = set(top_genes[:num_genes])
+            corr_genes = set(top_genes)
             corr_and_path = len(corr_genes.intersection(path_genes))
             corr_not_path = len(corr_genes.difference(path_genes))
             path_not_corr = len(path_genes.difference(corr_genes))
-            neither = len(data_dct) - len(corr_genes.union(path_genes))
+            neither = len(nci_genes.union(data_dct.keys())) - len(corr_genes.union(path_genes))
             # o_r = odds ratio.
             o_r, p_value = fisher_exact([[corr_and_path, corr_not_path], [path_not_corr, neither]])
-            top_pathways[path] = p_value
-            pathway_stats[path] = str(corr_and_path) + '\t' + str(corr_not_path) + '\t' + str(path_not_corr) + '\t' + str(neither)
+            top_pathways[(path, len(corr_genes), len(path_genes), corr_and_path)] = p_value
         top_paths = sorted(top_pathways.items(), key=operator.itemgetter(1))
-        for path, p_val in top_paths:
-            path_out.write(drug + '\t' + path + '\t' + str(p_val) + '\t' + pathway_stats[path] + '\n')
+        for pair, p_val in top_paths:
+            path, corr, path_len, inter = pair
+            combo = drug + '\t' + path + '\t' + str(p_val) + '\t' + str(corr)
+            combo += '\t' + str(path_len) + '\t' + str(inter) + '\n'
+            path_out.write(combo)
     path_out.close()
 
     # Sort the top genes by value. Get the top genes.
