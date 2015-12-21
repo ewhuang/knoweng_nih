@@ -10,7 +10,7 @@ or
 Reads in the LINCS data for level 3 or 4, and then finds the top pathway, drug
 and cell-line pairs by using Fisher's hypergeometric test. The top genes for
 each drug are found by taking z-scores the absolute values of which are higher
-than 2.5. Output file is ./results/top_pathways_lincs_lvl4.txt.
+than 3.0. Output file is ./results/top_pathways_lincs_lvl4.txt.
 
 ______________________________________
 Uses PCA to find the most highly correlated drug-pathway pairs.
@@ -23,6 +23,7 @@ principal components.
 ______________________________________
 Compare the previous drug-pathway ranking methods (PCA, L1 linear regression)
 with LINCS as a baseline.
->>> python compare_pca_l1_with_lincs.py pca/l1
-Outputs file, compare_lincs_and_pca.txt or compare_lincs_and_l1.txt, depending
-on the method of choice.
+>>> python compare_methods_with_lincs.py pca/l1.exp
+Outputs file, compare_lincs_and_METHOD.txt, depending on the method of choice. 
+Uses Fisher's test to find how similar each method's top pathways are with
+LINC's top pathways.

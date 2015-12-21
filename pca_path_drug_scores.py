@@ -85,6 +85,7 @@ if __name__ == '__main__':
     drug_pathway_score_dct = OrderedDict({})
     num_low_p_first = 0 # Number of p-values below threshold for first component
     num_low_p_sec = 0 # Number of significant p-values for second component.
+    print 'Computing PCA...'
     for path in nci_path_dct:
         patient_scores_first = []
         patient_scores_second = []
@@ -130,12 +131,13 @@ if __name__ == '__main__':
             else:
                 drug_pathway_score_dct[drug][path] = [p_value_f]
     # Output the results to file.
-    outfile = open('./results/pca_path_drug_scores.txt', 'w')
-    outfile.write('num_low_p_first\t%d\tnum_low_p_second\t%d\n' % (num_low_p_first, num_low_p_sec))
+    out = open('./results/pca_path_drug_scores.txt', 'w')
+    out.write('num_low_p_first\t%d\tnum_low_p_second\t%d\n' % (num_low_p_first, num_low_p_sec))
+    out.write('drug\tpath_component\tp-value\n')
     for drug in drug_pathway_score_dct:
         for path in drug_pathway_score_dct[drug]:
             for i, score in enumerate(drug_pathway_score_dct[drug][path]):
                 # The i+1 is to differentiate between 1st and 2nd principal
                 # components.
-                outfile.write('%s\t%s_%d\t%s\n' % (drug, path, i+1, str(score)))
-    outfile.close()
+                out.write('%s\t%s_%d\t%s\n' % (drug, path, i+1, str(score)))
+    out.close()

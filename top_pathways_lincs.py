@@ -10,8 +10,9 @@ import sys
 ### Can read in level 3 or 4 LINCS data.
 ### Usage: python top_pathways_lincs.py 3/4
 
-Z_SCORE_MIN = 3.0
+Z_SCORE_MIN = 2
 MAX_GENES_PER_DRUG = 500
+LOW_P_THRESHOLD = 1e-04 # Count how many pathway-drug pairs are below this.
 
 ### Create new list copy without duplicates.
 def create_no_dup(lst):
@@ -142,11 +143,11 @@ if __name__ == '__main__':
         out = open('./results/top_pathways_lincs_lvl4.txt', 'w')
     elif level == 3:
         out = open('./results/top_pathways_lincs_lvl3.txt', 'w')
-    out.write('drug\tcell_line\tpath\tp-value\tinter\tlincs\tpath\n')
     # Fisher's test for every drug/cell-line and path pair.
     total_num_genes = len(nci_genes.union(genes))
+    fish_dct = {}
+    num_low_p = 0
     for drug in drug_matrix:
-        fish_dct = {}
         for path_index, path in enumerate(nci_path_dct):
             path_genes = set(nci_path_dct[path])
             n = len(path_genes)
@@ -157,12 +158,16 @@ if __name__ == '__main__':
             neither = total_num_genes - len(corr_genes.union(path_genes))
             o_r, p_value = fisher_exact([[corr_and_path, corr_not_path],
                 [path_not_corr, neither]])
+            if p_value < LOW_P_THRESHOLD:
+                num_low_p += 1
             fish_dct[(drug, path, corr_and_path, len(corr_genes), n)] = p_value
-        sorted_fisher = sorted(fish_dct.items(), key=operator.itemgetter(1))
-        # Write the drug's top pathways to file.
-        for info, score in sorted_fisher:
-            drug, path, inter, corr_len, path_len = info
-            drug, cell_line = drug.split('_')
-            out.write('%s\t%s\t%s\t' % (drug, cell_line, path))
-            out.write('%g\t%d\t%d\t%d\n' % (score, inter, corr_len, path_len))
+    sorted_fisher = sorted(fish_dct.items(), key=operator.itemgetter(1))
+    # Write the drug's top pathways to file.
+    out.write('num_p_below_%s\t%d\n' % (str(LOW_P_THRESHOLD), num_low_p))
+    out.write('drug\tcell_line\tpath\tp-value\tinter\tlincs\tpath\n')
+    for info, score in sorted_fisher:
+        drug, path, inter, corr_len, path_len = info
+        drug, cell_line = drug.split('_')
+        out.write('%s\t%s\t%s\t' % (drug, cell_line, path))
+        out.write('%g\t%d\t%d\t%d\n' % (score, inter, corr_len, path_len))
     out.close()

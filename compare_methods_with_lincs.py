@@ -12,11 +12,12 @@ import sys
 ### the most highly correlated pathways for each drug. We compare this to
 ### level 4 LINCS data by using Fisher's exact test.
 
-P_THRESHOLD = 0.05
+RES_P_THRESHOLD = 0.05
+LINCS_P_THRESHOLD = 0.1
 
 if __name__ == '__main__':
     if (len(sys.argv) != 2):
-        print "Usage: " + sys.argv[0] + " pca/l1"
+        print "Usage: " + sys.argv[0] + " pca/l1/exp"
         exit(1)
     method = sys.argv[1]
 
@@ -28,16 +29,23 @@ if __name__ == '__main__':
         results_file = open('./results/pca_path_drug_scores.txt', 'r')
     elif method == 'l1':
         results_file = open('./results/linear_regression_L1.txt', 'r')
+    elif method == 'exp':
+        results_file = open('./results/top_pathways_exp.txt', 'r')
     for i, line in enumerate(results_file):
         if method == 'pca':
-            # Skip the first line, as it contains summary of the results.
-            if i == 0:
+            # Skip the first two line, as it contains summary of the results.
+            if i < 2:
                 continue
             drug, path, score = line.strip().split('\t')
             # Remove differentiation between 1st and 2nd principal components.
             path = path[:-2]
         elif method == 'l1':
             drug, path, dont_use_this, score = line.split()
+        elif method == 'exp':
+            if i < 2:
+                continue
+            line = line.strip().split('\t')
+            drug, path, score = line[0], line[1], line[2]
         if score == '[]':
             continue
         score = float(score)
@@ -45,6 +53,7 @@ if __name__ == '__main__':
             results_dct[(drug, path)] = score
         else:
             # For PCA, get the min value between the 1st and 2nd components.
+            assert method == 'pca'
             results_dct[(drug, path)] = min(results_dct[(drug, path)], score)
         pathways.add(path)
     results_file.close()
@@ -54,7 +63,7 @@ if __name__ == '__main__':
     res_dct = {}
     for (drug, path), score in sorted_res:
         # Get only p-values lower than P_THRESHOLD to be in a drug's top paths.
-        if method == 'pca' and score > P_THRESHOLD:
+        if score > RES_P_THRESHOLD:
             if drug not in res_dct:
                 res_dct[drug] = []
             continue
@@ -66,7 +75,9 @@ if __name__ == '__main__':
     print 'Extracting level 4 LINCS top pathways...'
     f = open('./results/top_pathways_lincs_lvl4.txt', 'r')
     lincs_dct = {}
-    for line in f:
+    for i, line in enumerate(f):
+        if i < 2:
+            continue
         drug, cell_line, path, score, x, y, z = line.strip().split('\t')
         size = len(lincs_dct)
         lincs_dct[(drug + '_' + cell_line, path)] = float(score)
@@ -77,7 +88,7 @@ if __name__ == '__main__':
     sorted_lincs = sorted(lincs_dct.items(), key=operator.itemgetter(1))
     lincs_top_dct = {}
     for (drug_cell, path), score in sorted_lincs:
-        if score > P_THRESHOLD:
+        if score > LINCS_P_THRESHOLD:
             continue
         if drug_cell not in lincs_top_dct:
             lincs_top_dct[drug_cell] = [path]
@@ -95,8 +106,6 @@ if __name__ == '__main__':
         #     res = set(res_dct[drug][:50])
         lincs_and_res = len(lincs.intersection(res))
         lincs_not_res = len(lincs.difference(res))
-        # lincs_not_res = len(lincs) - lincs_and_res #len(lincs.difference(pca))
-        # res_not_lincs = len(res) - lincs_and_res #len(pca.difference(lincs))
         res_not_lincs = len(res.difference(lincs))
         neither = len(pathways) - len(res.union(lincs))
         o_r, p_value = fisher_exact([[lincs_and_res, lincs_not_res], [res_not_lincs, neither]])
