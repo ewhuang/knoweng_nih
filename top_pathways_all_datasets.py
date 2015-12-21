@@ -1,18 +1,17 @@
+### Author: Edward Huang
+
 from scipy.stats.stats import pearsonr
 from scipy.stats import fisher_exact
 import operator
 from collections import OrderedDict
-import numpy as np
-import sys
-import random
 
-### Author: Edward Huang
-### Find top genes from gene expression, mutation, and LINCS data sets.
+### Find top genes from gene expression and mutation data sets.
 ### Uses Fisher's test to then use the gene rankings to find most similar
 ### pathways.
 
+# The maximum p-value to for Pearson's between drug response and gene expression
+# to allow to be a significantly correlated gene for a drug.
 P_THRESHOLD = 0.05
-PEARSON_THRESH = 0.1
 
 print 'Extracting NCI pathways...'
 path_file = open('./data/nci_pathway.txt', 'r')
