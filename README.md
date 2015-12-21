@@ -13,6 +13,13 @@ each drug are found by taking z-scores the absolute values of which are higher
 than 3.0. Output file is ./results/top_pathways_lincs_lvl4.txt.
 
 ______________________________________
+Finds top pathways for the gene expression data.
+>>> python top_pathways_mut_exp.py
+Uses Pearson to find the correlation between gene expression and drug response.
+Outputs two files, top_pathways_exp.txt and top_pathways_mut.txt.
+They show the top drug-pathway pairs through Fisher's test.
+
+______________________________________
 Uses PCA to find the most highly correlated drug-pathway pairs.
 >>> python pca_path_drug_scores.py
 Outputs results into pca_pathway_scores.txt.

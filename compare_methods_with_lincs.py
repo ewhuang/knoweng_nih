@@ -14,6 +14,7 @@ import sys
 
 RES_P_THRESHOLD = 0.05
 LINCS_P_THRESHOLD = 0.1
+LOW_P_THRESHOLD = 1e-04
 
 if __name__ == '__main__':
     if (len(sys.argv) != 2):
@@ -25,8 +26,9 @@ if __name__ == '__main__':
     print 'Extracting data from %s output file...' % method
     pathways = set([])
     results_dct = OrderedDict({})
+    res_below_low_p = set([])
     if method == 'pca':
-        results_file = open('./results/pca_path_drug_scores.txt', 'r')
+        results_file = open('./results/top_pathways_pca.txt', 'r')
     elif method == 'l1':
         results_file = open('./results/linear_regression_L1.txt', 'r')
     elif method == 'exp':
@@ -49,6 +51,8 @@ if __name__ == '__main__':
         if score == '[]':
             continue
         score = float(score)
+        if score < LOW_P_THRESHOLD:
+            res_below_low_p.add((drug, path))
         if (drug, path) not in results_dct:
             results_dct[(drug, path)] = score
         else:
@@ -87,6 +91,7 @@ if __name__ == '__main__':
     print 'Sorting level 4 LINCS top pathways...'
     sorted_lincs = sorted(lincs_dct.items(), key=operator.itemgetter(1))
     lincs_top_dct = {}
+    lincs_below_low_p = set([])
     for (drug_cell, path), score in sorted_lincs:
         if score > LINCS_P_THRESHOLD:
             continue
@@ -94,6 +99,14 @@ if __name__ == '__main__':
             lincs_top_dct[drug_cell] = [path]
         else:
             lincs_top_dct[drug_cell] += [path]
+        if score < LOW_P_THRESHOLD:
+            lincs_below_low_p.add((drug_cell.split('_')[0], path))
+
+    print lincs_below_low_p
+    print res_below_low_p
+    print len(lincs_below_low_p), len(res_below_low_p)
+    print lincs_below_low_p.intersection(res_below_low_p)
+    exit()
 
     # Compare each drug-cell line with pca pathways.
     fisher_dct = {}

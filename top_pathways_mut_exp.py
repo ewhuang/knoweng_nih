@@ -12,10 +12,11 @@ from collections import OrderedDict
 # The maximum p-value to for Pearson's between drug response and gene expression
 # to allow to be a significantly correlated gene for a drug.
 P_THRESHOLD = 0.05
+MAX_GENES_PER_DRUG = 500
+LOW_P_THRESHOLD = 1e-04
 
 print 'Extracting NCI pathways...'
 path_file = open('./data/nci_pathway.txt', 'r')
-pathnames = []
 nci_path_dct = {}
 nci_genes = set([])
 for line in path_file:
@@ -26,8 +27,6 @@ for line in path_file:
         nci_path_dct[path_name] = [path_gene]
     else:
         nci_path_dct[path_name] += [path_gene]
-    if path_name not in pathnames:
-        pathnames += [path_name]
 path_file.close()
 
 # Get the drug responses from the spreadsheet file.
@@ -68,9 +67,7 @@ def write_genes_pathways(data_dct, run):
             if p_value < P_THRESHOLD:
                 all_top_genes[(gene, drug)] = p_value
                 drug_top_genes[gene] = p_value
-                if p_value < 1e-04:
-                    num_low_p += 1
-        top_genes = sorted(drug_top_genes.items(), key=operator.itemgetter(1))
+        top_genes = sorted(drug_top_genes.items(), key=operator.itemgetter(1))[:MAX_GENES_PER_DRUG]
         # g, d: Gene-Drug Pair.
         assert (False not in [pcc <= P_THRESHOLD for gene, pcc in top_genes])
         top_genes = [gene for gene, pcc in top_genes]
@@ -84,6 +81,8 @@ def write_genes_pathways(data_dct, run):
             neither = len(nci_genes.union(data_dct.keys())) - len(corr_genes.union(path_genes))
             # o_r = odds ratio.
             o_r, p_value = fisher_exact([[corr_and_path, corr_not_path], [path_not_corr, neither]])
+            if p_value < LOW_P_THRESHOLD:
+                num_low_p += 1
             top_pathways[(drug, path, corr_and_path, len(corr_genes), len(path_genes))] = p_value
     top_paths = sorted(top_pathways.items(), key=operator.itemgetter(1))
     path_out.write('num_low_p\t%s\n' % str(num_low_p))
