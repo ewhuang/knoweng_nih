@@ -10,7 +10,7 @@ import sys
 ### Can read in level 3 or 4 LINCS data.
 ### Usage: python top_pathways_lincs.py 3/4
 
-Z_SCORE_MIN = 2.5
+Z_SCORE_MIN = 3.0
 MAX_GENES_PER_DRUG = 500
 
 ### Create new list copy without duplicates.
@@ -22,6 +22,9 @@ def create_no_dup(lst):
     return new_lst
 
 if __name__ == '__main__':
+    if len(sys.argv) != 2:
+        print 'Usage: %s 3/4' % sys.argv[0]
+        exit()
     level = int(sys.argv[1])
 
     # Create dictionary, keys are drug ID's, values are the English drug names.
@@ -33,16 +36,14 @@ if __name__ == '__main__':
 
     print 'Extracting NCI pathways...'
     path_file = open('./data/nci_pathway.txt', 'r')
-    # List of the pathway names.
-    pathnames = []
     # nci_path_dct, keys are NCI pathway names, values are lists of genes in the
     # corresponding pathways.
     nci_path_dct = {}
     # A set of all of the genes over all NCI pathways.
     nci_genes = set([])
     for line in path_file:
-        line = line.split('\t')
-        path_name, path_gene = line[0], line[1][:-2]
+        line = line.strip().split('\t')
+        path_name, path_gene = line[0], line[1]
 
         nci_genes.add(path_gene)
         
@@ -50,9 +51,6 @@ if __name__ == '__main__':
             nci_path_dct[path_name] = [path_gene]
         else:
             nci_path_dct[path_name] += [path_gene]
-        
-        if path_name not in pathnames:
-            pathnames += [path_name]
     path_file.close()
 
     # Extract genes from LINCS level 3 because level 4 data is missing the gene
@@ -60,11 +58,10 @@ if __name__ == '__main__':
     f = open('./data/lincs_zscore.txt', 'r')
     genes = []
     for i, line in enumerate(f):
-        line = line.split()
         if i == 0:
             continue
-        else:
-            genes += [line[1]]
+        line = line.split()
+        genes += [line[1]]
     f.close()
 
     print 'Extracting LINCS data...'
@@ -74,6 +71,7 @@ if __name__ == '__main__':
         f = open('./data/lincs_zscore.txt', 'r')
     drugs = []
     gene_dct = OrderedDict({})
+    # Define -infinity
     inf = float('-inf')
     for i, line in enumerate(f):
         line = line.split()
@@ -93,17 +91,13 @@ if __name__ == '__main__':
                 gene_dct[gene] = z_scores
             else:
                 # If a gene appears twice, then we want to get the max values.
-                curr_vals = gene_dct[gene]
                 for ci, value in enumerate(z_scores):
-                    gene_dct[gene][ci] = max(curr_vals[ci], value)
+                    gene_dct[gene][ci] = max(gene_dct[gene][ci], value)
     f.close()
-    # Delete bad genes from the listself.
-    while '-666' in genes:
-        genes.remove('-666')
-
-    # Remove the duplicate genes.
-    genes = create_no_dup(genes)
-
+    
+    # Update genes to be just the valid ones in our dictionary.
+    genes = gene_dct.keys()
+    
     # Take out the lvl4_ prefix in all of the drug strings.
     if level == 4:
         drugs = [raw_string[5:] for raw_string in drugs]
@@ -116,6 +110,8 @@ if __name__ == '__main__':
 
     # Change names of the drug ID's to English drug names.
     temp_drug_matrix = OrderedDict({})
+    # Make a new dictionary, with keys as drugs, and values as lists of LINCS
+    # z-scores.
     for i, row in enumerate(drug_matrix):
         drug, cell_line = row[0].split('_')
         drug, z_scores = trans_dct[drug] + '_' + cell_line, row[1:]
@@ -129,6 +125,8 @@ if __name__ == '__main__':
 
     for drug in drug_matrix:
         z_scores = drug_matrix[drug]
+        # Average the z-scores for different experiments of the same drug-cell
+        # line pair.
         z_scores = [np.mean(x) for x in zip(*z_scores)]
         top_gene_indices = []
         for i, z_score in enumerate(z_scores):
@@ -144,6 +142,7 @@ if __name__ == '__main__':
         out = open('./results/top_pathways_lincs_lvl4.txt', 'w')
     elif level == 3:
         out = open('./results/top_pathways_lincs_lvl3.txt', 'w')
+    out.write('drug\tcell_line\tpath\tp-value\tinter\tlincs\tpath\n')
     # Fisher's test for every drug/cell-line and path pair.
     total_num_genes = len(nci_genes.union(genes))
     for drug in drug_matrix:
@@ -156,14 +155,14 @@ if __name__ == '__main__':
             corr_not_path = len(corr_genes.difference(path_genes))
             path_not_corr = len(path_genes.difference(corr_genes))
             neither = total_num_genes - len(corr_genes.union(path_genes))
-            odds_ratio, p_value = fisher_exact([[corr_and_path, corr_not_path],
+            o_r, p_value = fisher_exact([[corr_and_path, corr_not_path],
                 [path_not_corr, neither]])
-            fish_dct[(drug, path, len(corr_genes), n, corr_and_path)] = p_value
+            fish_dct[(drug, path, corr_and_path, len(corr_genes), n)] = p_value
         sorted_fisher = sorted(fish_dct.items(), key=operator.itemgetter(1))
         # Write the drug's top pathways to file.
         for info, score in sorted_fisher:
-            drug, path, corr_len, path_len, inter = info
+            drug, path, inter, corr_len, path_len = info
             drug, cell_line = drug.split('_')
             out.write('%s\t%s\t%s\t' % (drug, cell_line, path))
-            out.write('%g\t%d\t%d\t%d\n' % (score, corr_len, path_len, inter))
+            out.write('%g\t%d\t%d\t%d\n' % (score, inter, corr_len, path_len))
     out.close()
