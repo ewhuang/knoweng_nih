@@ -10,11 +10,8 @@ import sys
 ### Takes the drug-pathway scores from either PCA or linear regression L1
 ### and ranks by p-values. For either method, we arrive at a ranking of
 ### the most highly correlated pathways for each drug. We compare this to
-### level 4 LINCS data by using Fisher's exact test.
-
-# RES_P_THRESHOLD = 0.05x
-# LINCS_P_THRESHOLD = 0.1
-# LOW_P_THRESHOLD = 0.05
+### level 4 LINCS data by finding the size of the intersection of genes that
+### have p-values below 0.0001, 0.1, and 0.04.
 
 if __name__ == '__main__':
     if (len(sys.argv) != 2):
@@ -22,6 +19,10 @@ if __name__ == '__main__':
         exit(1)
     method = sys.argv[1]
 
+
+    out = open('./results/compare_lincs_and_%s.txt' % method, 'w')
+    out.write('p-value threshold\tsize_intersection\tlincs\t%s' % method)
+    out.write('\tneither\tfisher\'s p-value\n')
     # Results Processing
     for LOW_P_THRESHOLD in [1e-04, 0.01, 0.05]:
         # print 'Extracting data from %s output file...' % method
@@ -63,20 +64,6 @@ if __name__ == '__main__':
             pathways.add(path)
         results_file.close()
 
-        # print 'Sorting results by p values...'
-        # sorted_res = sorted(results_dct.items(), key=operator.itemgetter(1))
-        # res_dct = {}
-        # for (drug, path), score in sorted_res:
-        #     # Get only p-values lower than P_THRESHOLD to be in a drug's top paths.
-        #     if score > RES_P_THRESHOLD:
-        #         if drug not in res_dct:
-        #             res_dct[drug] = []
-        #         continue
-        #     if drug not in res_dct:
-        #         res_dct[drug] = [path]
-        #     else:
-        #         res_dct[drug] += [path]
-
         # print 'Extracting level 4 LINCS top pathways...'
         f = open('./results/top_pathways_lincs_lvl4.txt', 'r')
         lincs_dct = {}
@@ -92,17 +79,6 @@ if __name__ == '__main__':
                 lincs_below_low_p.add((drug, path))
         f.close()
 
-        # print 'Sorting level 4 LINCS top pathways...'
-        # sorted_lincs = sorted(lincs_dct.items(), key=operator.itemgetter(1))
-        # # lincs_top_dct = {}
-        # for (drug_cell, path), score in sorted_lincs:
-            # if score > LINCS_P_THRESHOLD:
-            #     continue
-            # if drug_cell not in lincs_top_dct:
-            #     lincs_top_dct[drug_cell] = [path]
-            # else:
-            #     lincs_top_dct[drug_cell] += [path]
-
         # This just finds the overlap, but doesn't use hypergeometric.
         # print lincs_below_low_p
         # print res_below_low_p
@@ -110,45 +86,12 @@ if __name__ == '__main__':
         lincs_and_res = len(lincs_below_low_p.intersection(res_below_low_p))
         lincs_not_res = len(lincs_below_low_p.difference(res_below_low_p))
         res_not_lincs = len(res_below_low_p.difference(lincs_below_low_p))
-        print method, LOW_P_THRESHOLD
-        print lincs_and_res, lincs_not_res, res_not_lincs, num_drug_pathway_pairs
-        print fisher_exact([[lincs_and_res, lincs_not_res],
+        # print method, 'p-value threshold: ' LOW_P_THRESHOLD
+        # print lincs_and_res, lincs_not_res, res_not_lincs, num_drug_pathway_pairs
+        o_r, p_val = fisher_exact([[lincs_and_res, lincs_not_res],
             [res_not_lincs, num_drug_pathway_pairs]])
-        # exit()
 
+        out.write('%f\t%d\t%d\t' % (LOW_P_THRESHOLD, lincs_and_res, lincs_not_res))
+        out.write('%d\t%d\t%g\n' % (res_not_lincs, num_drug_pathway_pairs, p_val))
 
-
-
-
-
-    exit()
-
-
-
-
-
-
-    # Compare each drug-cell line with pca pathways.
-    fisher_dct = {}
-    int_dct = {}
-    for drug_cell in lincs_top_dct:
-        drug, cell_line = drug_cell.split('_')
-        lincs = set(lincs_top_dct[drug_cell])
-        res = set(res_dct[drug])
-        # if method == 'l1':
-        #     res = set(res_dct[drug][:50])
-        lincs_and_res = len(lincs.intersection(res))
-        lincs_not_res = len(lincs.difference(res))
-        res_not_lincs = len(res.difference(lincs))
-        neither = len(pathways) - len(res.union(lincs))
-        o_r, p_value = fisher_exact([[lincs_and_res, lincs_not_res], [res_not_lincs, neither]])
-        fisher_dct[(drug, cell_line)] = p_value
-        int_dct[(drug, cell_line)] = '%d\t%d\t%d' % (lincs_and_res, len(lincs), len(res))
-    sorted_fisher = sorted(fisher_dct.items(), key=operator.itemgetter(1))
-
-    print 'Writing results out to file...'
-    out = open('./results/compare_lincs_and_' + method + '.txt', 'w')
-    out.write('drug\tcell_line\tp_val\tintersection\tlincs\t%s\n' % method)
-    for (drug, cell_line), p_val in sorted_fisher:
-        out.write('%s\t%s\t%g\t%s\n' % (drug, cell_line, p_val, int_dct[drug, cell_line]))
     out.close()

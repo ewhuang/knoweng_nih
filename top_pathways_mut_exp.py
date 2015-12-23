@@ -67,20 +67,20 @@ def write_genes_pathways(data_dct, run):
             if p_value < P_THRESHOLD:
                 all_top_genes[(gene, drug)] = p_value
                 drug_top_genes[gene] = p_value
+        # These are the top correlated genes for each drug.
         top_genes = sorted(drug_top_genes.items(), key=operator.itemgetter(1))[:MAX_GENES_PER_DRUG]
-        # g, d: Gene-Drug Pair.
-        assert (False not in [pcc <= P_THRESHOLD for gene, pcc in top_genes])
-        top_genes = [gene for gene, pcc in top_genes]
-        # Compute the top pathways for each drug.
+        # Get just the genes now, without the corresponding scores.
+        corr_genes = set([gene for gene, pcc in top_genes])
+        # Compute the top pathways for each drug with Fisher's test.
         for path in nci_path_dct:
             path_genes = set(nci_path_dct[path])
-            corr_genes = set(top_genes)
             corr_and_path = len(corr_genes.intersection(path_genes))
             corr_not_path = len(corr_genes.difference(path_genes))
             path_not_corr = len(path_genes.difference(corr_genes))
             neither = len(nci_genes.union(data_dct.keys())) - len(corr_genes.union(path_genes))
             # o_r = odds ratio.
             o_r, p_value = fisher_exact([[corr_and_path, corr_not_path], [path_not_corr, neither]])
+            # Count the number of significant p-values.
             if p_value < LOW_P_THRESHOLD:
                 num_low_p += 1
             top_pathways[(drug, path, corr_and_path, len(corr_genes), len(path_genes))] = p_value
