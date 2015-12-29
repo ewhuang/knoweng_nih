@@ -26,7 +26,6 @@ if __name__ == '__main__':
     # Results Processing
     for LOW_P_THRESHOLD in [1e-04, 0.01, 0.05]:
         # print 'Extracting data from %s output file...' % method
-        pathways = set([])
         results_dct = OrderedDict({})
         res_below_low_p = set([])
         if method == 'pca':
@@ -36,7 +35,7 @@ if __name__ == '__main__':
         elif method == 'exp':
             results_file = open('./results/top_pathways_exp.txt', 'r')
         for i, line in enumerate(results_file):
-            if method == 'pca':
+            if method == 'pca' or method == 'exp':
                 # Skip the first two line, as it contains summary of the results.
                 if i < 2:
                     continue
@@ -45,11 +44,6 @@ if __name__ == '__main__':
                 path = path[:-2]
             elif method == 'l1':
                 drug, path, dont_use_this, score = line.split()
-            elif method == 'exp':
-                if i < 2:
-                    continue
-                line = line.strip().split('\t')
-                drug, path, score = line[0], line[1], line[2]
             if score == '[]':
                 continue
             score = float(score)
@@ -61,20 +55,15 @@ if __name__ == '__main__':
                 # For PCA, get the min value between the 1st and 2nd components.
                 assert method == 'pca'
                 results_dct[(drug, path)] = min(results_dct[(drug, path)], score)
-            pathways.add(path)
         results_file.close()
 
         # print 'Extracting level 4 LINCS top pathways...'
         f = open('./results/top_pathways_lincs_lvl4.txt', 'r')
-        lincs_dct = {}
         lincs_below_low_p = set([])
         for i, line in enumerate(f):
             if i < 2:
                 continue
             drug, cell_line, path, score, x, y, z = line.strip().split('\t')
-            size = len(lincs_dct)
-            lincs_dct[(drug + '_' + cell_line, path)] = float(score)
-            pathways.add(path)
             if float(score) < LOW_P_THRESHOLD:
                 lincs_below_low_p.add((drug, path))
         f.close()
