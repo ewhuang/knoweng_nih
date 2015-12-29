@@ -24,9 +24,9 @@ def create_no_dup(lst):
 
 if __name__ == '__main__':
     if len(sys.argv) != 2:
-        print 'Usage: %s 3/4' % sys.argv[0]
+        print 'Usage: %s AFT-NUM' % sys.argv[0]
         exit()
-    level = int(sys.argv[1])
+    aft_num = sys.argv[1]
 
     # Create dictionary, keys are drug ID's, values are the English drug names.
     f = open('./data/drug_translation.txt', 'r')
@@ -54,8 +54,7 @@ if __name__ == '__main__':
             nci_path_dct[path_name] += [path_gene]
     path_file.close()
 
-    # Extract genes from LINCS level 3 because level 4 data is missing the gene
-    # column.
+    # Extract genes from LINCS level 3
     f = open('./data/lincs_zscore.txt', 'r')
     genes = []
     for i, line in enumerate(f):
@@ -66,28 +65,22 @@ if __name__ == '__main__':
     f.close()
 
     print 'Extracting LINCS data...'
-    if level == 4:
-        f = open('./data/lincs_zscore_new.txt', 'r')
-    elif level == 3:
-        f = open('./data/lincs_zscore.txt', 'r')
+    f = open('./data/lvl4_combinedPvalue_Aft_%s.txt' % aft_num, 'r')
     drugs = []
     gene_dct = OrderedDict({})
     # Define -infinity
     inf = float('-inf')
     for i, line in enumerate(f):
         line = line.split()
+        gene = genes[i-1]
         if i == 0:
-            drugs = line
-        elif genes[i-1] == '-666':
+            # Take out the lvl4_ prefix
+            drugs = [raw_string[5:] for raw_string in line]
+        elif gene == '-666':
             continue
         else:
-            # Level 4 is missing the gene column.
-            if level == 4:
-                gene, z_scores = genes[i-1], line[2:]
-            elif level == 3:
-                gene, z_scores = genes[i-1], line[3:]
             # #NAME? is negative infinity in the excel file.
-            z_scores = [inf if x == '#NAME?' else abs(float(x)) for x in z_scores]
+            z_scores = [inf if x == '#NAME?' else abs(float(x)) for x in line]
             if gene not in gene_dct:
                 gene_dct[gene] = z_scores
             else:
@@ -98,10 +91,6 @@ if __name__ == '__main__':
     
     # Update genes to be just the valid ones in our dictionary.
     genes = gene_dct.keys()
-    
-    # Take out the lvl4_ prefix in all of the drug strings.
-    if level == 4:
-        drugs = [raw_string[5:] for raw_string in drugs]
 
     print 'Cleaning data and converting to dictionary...'
     drug_matrix = [drugs]
@@ -114,7 +103,8 @@ if __name__ == '__main__':
     # Make a new dictionary, with keys as drugs, and values as lists of LINCS
     # z-scores.
     for i, row in enumerate(drug_matrix):
-        drug, cell_line = row[0].split('_')
+        raw_string = row[0].split('_')
+        drug, cell_line = raw_string[0], raw_string[1]
         drug, z_scores = trans_dct[drug] + '_' + cell_line, row[1:]
         z_scores = map(float, z_scores)
 
@@ -139,10 +129,7 @@ if __name__ == '__main__':
         top_genes = [genes[i] for i, z_score in top_gene_indices]
         drug_matrix[drug] = top_genes
 
-    if level == 4:
-        out = open('./results/top_pathways_lincs_lvl4.txt', 'w')
-    elif level == 3:
-        out = open('./results/top_pathways_lincs_lvl3.txt', 'w')
+    out = open('./results/top_pathways_lincs_Aft_%s.txt' % aft_num, 'w')
     # Fisher's test for every drug/cell-line and path pair.
     total_num_genes = len(nci_genes.union(genes))
     fish_dct = {}

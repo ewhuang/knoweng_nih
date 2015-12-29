@@ -4,13 +4,12 @@ Author: Edward Huang
 
 ______________________________________
 Finds the top pathways for each drug, cell-line pair from LINCS dataset.
->>> python top_pathways_lincs.py 3
-or
->>> python top_pathways_lincs.py 4
-Reads in the LINCS data for level 3 or 4, and then finds the top pathway, drug
+>>> python top_pathways_lincs.py AFT_NUM
+AFT_NUM is the suffix for various p-values of LINCS z-score files.
+Reads in the LINCS data for level 4, and then finds the top pathway, drug
 and cell-line pairs by using Fisher's hypergeometric test. The top genes for
 each drug are found by taking z-scores the absolute values of which are higher
-than 3.0. Output file is ./results/top_pathways_lincs_lvl4.txt.
+than 2.0. Output file is ./results/top_pathways_lincs_Aft_AFT_NUM.txt.
 
 ______________________________________
 Finds top pathways for the gene expression data.
