@@ -7,8 +7,7 @@ import operator
 import sys
 
 ### Gets the top pathways for each drug/cell-line using the LINCS data set.
-### Can read in level 3 or 4 LINCS data.
-### Usage: python top_pathways_lincs.py 3/4
+### Usage: python top_pathways_lincs.py AFT_NUM
 
 Z_SCORE_MIN = 2
 MAX_GENES_PER_DRUG = 500

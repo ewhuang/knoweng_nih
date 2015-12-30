@@ -11,6 +11,10 @@ and cell-line pairs by using Fisher's hypergeometric test. The top genes for
 each drug are found by taking z-scores the absolute values of which are higher
 than 2.0. Output file is ./results/top_pathways_lincs_Aft_AFT_NUM.txt.
 
+>>> python top_pathways_lincs_positive_control.py AFT_NUM
+Generates drug-cell_line-pathway combinations to check correctness of LINCS 
+data.
+
 ______________________________________
 Finds top pathways for the gene expression data.
 >>> python top_pathways_mut_exp.py

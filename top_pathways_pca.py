@@ -133,7 +133,7 @@ if __name__ == '__main__':
     # Output the results to file.
     out = open('./results/top_pathways_pca.txt', 'w')
     out.write('num_low_p_first\t%d\tnum_low_p_second\t%d\n' % (num_low_p_first, num_low_p_sec))
-    out.write('drug\tpath_component\tp-value\n')
+    out.write('drug\tpath\tp-value\n')
     for drug in drug_pathway_score_dct:
         for path in drug_pathway_score_dct[drug]:
             for i, score in enumerate(drug_pathway_score_dct[drug][path]):
