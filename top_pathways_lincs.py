@@ -9,7 +9,7 @@ import sys
 ### Gets the top pathways for each drug/cell-line using the LINCS data set.
 ### Usage: python top_pathways_lincs.py AFT_NUM
 
-Z_SCORE_MIN = 2.5
+Z_SCORE_MIN = 2
 MAX_GENES_PER_DRUG = 500
 LOW_P_THRESHOLD = 0.0001 # Count how many pathway-drug pairs are below this.
 

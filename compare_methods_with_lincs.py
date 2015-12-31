@@ -23,7 +23,7 @@ if __name__ == '__main__':
     out.write('p-value\tdrug\tinter\tlincs\t%s' % method)
     out.write('\tneither\to_r\tfish-p\n')
     # Results Processing
-    for LOW_P_THRESHOLD in [0.0001, 0.001, 0.01, 0.05]:
+    for p_threshold in [0.0001, 0.001, 0.01, 0.05]:
         # print 'Extracting data from %s output file...' % method
         pathways = set([])
         res_below_low_p = set([])
@@ -47,7 +47,7 @@ if __name__ == '__main__':
 
             pathways.add(path)
 
-            if float(score) <= LOW_P_THRESHOLD:
+            if float(score) <= p_threshold:
                 res_below_low_p.add((drug, path))
                 if drug not in res_drug_dct:
                     res_drug_dct[drug] = set([path])
@@ -64,12 +64,13 @@ if __name__ == '__main__':
             if i < 2:
                 continue
 
+            # Disregard x, y, z.
             drug, cell_line, path, score, x, y, z = line.strip().split('\t')
-            
+            pathways.add(path)
             if cell_line not in lincs_cell_line_dct:
                 lincs_cell_line_dct[cell_line] = set([])
             
-            if float(score) <= LOW_P_THRESHOLD:
+            if float(score) <= p_threshold:
                 lincs_cell_line_dct[cell_line].add((drug, path))
 
                 if drug not in lincs_drug_dct:
@@ -90,7 +91,7 @@ if __name__ == '__main__':
         #     o_r, p_val = fisher_exact([[lincs_and_res, lincs_not_res],
         #         [res_not_lincs, neither]])
 
-        #     out.write('%f\t%s\t%d\t%d\t' % (LOW_P_THRESHOLD, cell_line, lincs_and_res, lincs_not_res))
+        #     out.write('%f\t%s\t%d\t%d\t' % (p_threshold, cell_line, lincs_and_res, lincs_not_res))
         #     out.write('%d\t%d\t%g\t%g\n' % (res_not_lincs, neither, o_r, p_val))
 
         for drug in lincs_drug_dct:
@@ -109,7 +110,7 @@ if __name__ == '__main__':
             if o_r > 1.0 and p_val < 0.01:
                 print drug
 
-            out.write('%f\t%s\t%d\t%d\t' % (LOW_P_THRESHOLD, drug, lincs_and_res, lincs_not_res))
+            out.write('%f\t%s\t%d\t%d\t' % (p_threshold, drug, lincs_and_res, lincs_not_res))
             out.write('%d\t%d\t%g\t%g\n' % (res_not_lincs, neither, o_r, p_val))
 
     out.close()
