@@ -13,9 +13,9 @@ from collections import OrderedDict
 # to allow to be a significantly correlated gene for a drug.
 P_THRESHOLD = 0.05
 MAX_GENES_PER_DRUG = 500
-LOW_P_THRESHOLD = 1e-04
+LOW_P_THRESHOLD = 0.0001
 
-print 'Extracting NCI pathways...'
+# Extract the NCI pathway data.
 path_file = open('./data/nci_pathway.txt', 'r')
 nci_path_dct = {}
 nci_genes = set([])
@@ -30,7 +30,6 @@ for line in path_file:
 path_file.close()
 
 # Get the drug responses from the spreadsheet file.
-print 'Extracting drug response values...'
 # Keys are drugs, values are lists of drug responses across all patients.
 drug_resp_dct = OrderedDict({})
 resp_file = open('./data/auc.tsv', 'r')
@@ -46,29 +45,32 @@ resp_file.close()
 
 def write_genes_pathways(data_dct, run):
     print 'Computing Pearson coefficients for ' + run + '...'
-    path_out = open('./results/top_pathways_' + run + '.txt', 'w')
     all_top_genes = {}
-    top_pathways = {}
+    # Dictionary of the top drug-pathway pairs.
+    top_pairs = {}
     num_low_p = 0
+    # The set of all genes in either expression or mutation, as well as NCI.
+    all_genes = nci_genes.union(data_dct.keys())
     for drug in drug_resp_dct:
         drug_top_genes = {}
         drug_resp = drug_resp_dct[drug]
         # List of indices of N/A values in our drug response table.
-        NA_indices = [i for i, e in enumerate(drug_resp) if e == None]
-        drug_resp = [e for i, e in enumerate(drug_resp) if i not in NA_indices]
+        NA_i = [i for i, e in enumerate(drug_resp) if e == None]
+        drug_resp = [e for i, e in enumerate(drug_resp) if i not in NA_i]
         if len(drug_resp) == 0:
             continue
         # Finding the top genes for each drug.
         for gene in data_dct:
             gene_data = data_dct[gene]
-            gene_data = [e for i, e in enumerate(gene_data) if i not in NA_indices]
+            gene_data = [e for i, e in enumerate(gene_data) if i not in NA_i]
             # Find the pearson coefficient between these two lists.
             pcc, p_value = pearsonr(drug_resp, gene_data)
             if p_value < P_THRESHOLD:
                 all_top_genes[(gene, drug)] = p_value
                 drug_top_genes[gene] = p_value
         # These are the top correlated genes for each drug.
-        top_genes = sorted(drug_top_genes.items(), key=operator.itemgetter(1))[:MAX_GENES_PER_DRUG]
+        top_genes = sorted(drug_top_genes.items(),
+            key=operator.itemgetter(1))[:MAX_GENES_PER_DRUG]
         # Get just the genes now, without the corresponding scores.
         corr_genes = set([gene for gene, pcc in top_genes])
         # Compute the top pathways for each drug with Fisher's test.
@@ -77,20 +79,26 @@ def write_genes_pathways(data_dct, run):
             corr_and_path = len(corr_genes.intersection(path_genes))
             corr_not_path = len(corr_genes.difference(path_genes))
             path_not_corr = len(path_genes.difference(corr_genes))
-            neither = len(nci_genes.union(data_dct.keys())) - len(corr_genes.union(path_genes))
+            neither = len(all_genes) - len(corr_genes.union(path_genes))
+            assert len((corr_genes.union(path_genes)).difference(all_genes)) == 0
             # o_r = odds ratio.
-            o_r, p_value = fisher_exact([[corr_and_path, corr_not_path], [path_not_corr, neither]])
+            o_r, p_value = fisher_exact([[corr_and_path, corr_not_path], 
+                [path_not_corr, neither]])
             # Count the number of significant p-values.
             if p_value < LOW_P_THRESHOLD:
                 num_low_p += 1
-            top_pathways[(drug, path, corr_and_path, len(corr_genes), len(path_genes))] = p_value
-    top_paths = sorted(top_pathways.items(), key=operator.itemgetter(1))
-    path_out.write('num_low_p\t%s\n' % str(num_low_p))
-    path_out.write('drug\tpath\tscore\tinter\tcorr_size\tpath_size\n')    
+            top_pairs[(drug, path, corr_and_path, 
+                corr_not_path, path_not_corr, neither)] = p_value
+    top_paths = sorted(top_pairs.items(), key=operator.itemgetter(1))
+
+    # Write out the results.
+    path_out = open('./results/top_pathways_' + run + '.txt', 'w')
+    path_out.write('num_below_%f\t%d\n' % (LOW_P_THRESHOLD, num_low_p))
+    path_out.write('drug\tpath\tscore\tinter\tcorr\tpath\tneither\n')    
     for info, p_val in top_paths:
-        drug, path, inter, corr, path_len = info
-        combo = drug + '\t' + path + '\t' + str(p_val) + '\t' + str(inter)
-        combo += '\t' + str(corr) + '\t' + str(path_len) + '\n'
+        drug, path, inter, corr, path_len, neither = info
+        combo = '%s\t%s\t%g\t%d\t%d\t' % (drug, path, p_val, inter, corr)
+        combo += '%d\t%d\n' % (path_len, neither)
         path_out.write(combo)
     path_out.close()
 
@@ -104,19 +112,18 @@ def write_genes_pathways(data_dct, run):
 
 if __name__ == '__main__':
     # Keys are genes, values are lists of gene expression across all patients.
-    gene_data_dct = OrderedDict({})
+    exp_dct = OrderedDict({})
     mut_dct = OrderedDict({})
-    genes = []
 
     print 'Extracting the gene expression vectors...'
     exp_file = open('./data/gene2medProbeExpr.txt', 'r')
     for i, line in enumerate(exp_file):
+        # Skip the header row.
         if i == 0:
             continue
         line = line.split()
-        gene, gene_data_line = line[0], line[1:]
-        genes += [gene]
-        gene_data_dct[gene] = map(float, gene_data_line)
+        gene, exp_line = line[0], line[1:]
+        exp_dct[gene] = map(float, exp_line)
     exp_file.close()
 
     print 'Extracting the mutation vectors...'
@@ -130,5 +137,5 @@ if __name__ == '__main__':
     mut_file.close()
 
     # Write the top pathways for gene expression and mutation.
-    write_genes_pathways(gene_data_dct, 'exp')
+    write_genes_pathways(exp_dct, 'exp')
     write_genes_pathways(mut_dct, 'mut')

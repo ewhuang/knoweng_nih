@@ -15,33 +15,24 @@ import numpy as np
 ### drug D. This correlation is the final score of pathway p to drug D.
 
 # Threshold for significant p-value to count.
-LOW_P_VALUE = 1e-4
+LOW_P_VALUE = 0.0001
 genes = []
 # Keys are drugs, values are lists of drug responses across all patients.
 drug_resp_dct = OrderedDict({})
 # Keys are genes, values are lists of gene expression across all patients.
-gene_exp_dct = OrderedDict({})
+exp_dct = OrderedDict({})
 
 if __name__ == '__main__':
-    # Convert the pathway genes to their indices in the coexpression network.
-    gene_to_index_dct = {}
-    medgene_f = open('./data/medGene.txt', 'r')
-    for i, line in enumerate(medgene_f):
-        gene = line.split()[0]
-        gene_to_index_dct[gene] = i + 1
-    medgene_f.close()
-
     # Gets the features vectors, which are the gene expressions across patients
-    print 'Extracting the feature vector...'
+    print 'Extracting the gene expression vectors...'
     exp_file = open('./data/gene2medProbeExpr.txt', 'r')
     for i, line in enumerate(exp_file):
+        # Skip the header row.
         if i == 0:
             continue
         line = line.split()
-        gene, gene_exp_line = gene_to_index_dct[line[0].lower()], line[1:]
-        num_patients = len(gene_exp_line)
-        genes += [gene]
-        gene_exp_dct[gene] = map(float, gene_exp_line)
+        gene, exp_line = line[0], line[1:]
+        exp_dct[gene] = map(float, exp_line)
     exp_file.close()
 
     # Get the drug responses from the spreadsheet file.
@@ -71,14 +62,6 @@ if __name__ == '__main__':
             nci_path_dct[path_name] += [path_gene]
     path_file.close()
 
-    # Translate the pathway genes to their corresponding indices.
-    for path in nci_path_dct:
-        for i, gene in enumerate(nci_path_dct[path]):
-            gene = gene.lower()
-            if gene in gene_to_index_dct:
-                nci_path_dct[path][i] = gene_to_index_dct[gene]
-        nci_path_dct[path] = [x for x in nci_path_dct[path] if type(x) == int]
-
     # Build the matrix for each pathway, and find the pathway's most principal
     # components
     most_principal_component_dct = {}
@@ -90,11 +73,15 @@ if __name__ == '__main__':
         patient_scores_first = []
         patient_scores_second = []
         pca_matrix = []
-        for gene in nci_path_dct[path]:
+
+        path_genes = nci_path_dct[path]
+        for gene in path_genes:
             # Add in the gene expression values for the patients across
             # the pathway genes.
-            pca_matrix += [gene_exp_dct[gene]]
+            if gene in exp_dct:
+                pca_matrix += [exp_dct[gene]]
         pca_matrix = np.array(pca_matrix).transpose()
+
         pca = PCA()
         pca.fit(pca_matrix)
 

@@ -1,10 +1,6 @@
 ### Author: Edward Huang
 
-from collections import OrderedDict
 from scipy.stats import fisher_exact
-import operator
-from sklearn.metrics import f1_score
-import math
 import sys
 
 ### Takes the drug-pathway scores from either PCA or linear regression L1
