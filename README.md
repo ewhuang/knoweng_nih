@@ -24,7 +24,7 @@ They show the top drug-pathway pairs through Fisher's test.
 
 ______________________________________
 Uses PCA to find the most highly correlated drug-pathway pairs.
->>> python pca_path_drug_scores.py
+>>> python top_pathways_pca.py
 Outputs results into pca_pathway_scores.txt.
 Uses Spearman. First line of output file contains the number of pathway-drug
 pairs that have p-value below 1e-4 (0.0001) for both first and second most

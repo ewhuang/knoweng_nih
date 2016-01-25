@@ -112,5 +112,4 @@ if __name__ == '__main__':
 
             out.write('%f\t%s\t%d\t%d\t' % (p_threshold, drug, lincs_and_res, lincs_not_res))
             out.write('%d\t%d\t%g\t%g\n' % (res_not_lincs, neither, o_r, p_val))
-
     out.close()

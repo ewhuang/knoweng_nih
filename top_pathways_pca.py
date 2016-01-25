@@ -25,7 +25,7 @@ exp_dct = OrderedDict({})
 if __name__ == '__main__':
     # Gets the features vectors, which are the gene expressions across patients
     print 'Extracting the gene expression vectors...'
-    exp_file = open('./data/gene2medProbeExpr.txt', 'r')
+    exp_file = open('./data/gene_expression_hgnc.tsv', 'r')
     for i, line in enumerate(exp_file):
         # Skip the header row.
         if i == 0:
@@ -37,7 +37,7 @@ if __name__ == '__main__':
 
     # Get the drug responses from the spreadsheet file.
     print 'Extracting drug response labels...'
-    resp_file = open('./data/auc.tsv', 'r')
+    resp_file = open('./data/auc_hgnc.tsv', 'r')
     for i, line in enumerate(resp_file):
         if i == 0:
             continue
@@ -49,7 +49,7 @@ if __name__ == '__main__':
     resp_file.close()
 
     print 'Extracting NCI pathways...'
-    path_file = open('./data/nci_pathway.txt', 'r')
+    path_file = open('./data/nci_pathway_hgnc.txt', 'r')
     nci_path_dct = {}
     nci_genes = set([])
     for line in path_file:
@@ -82,6 +82,9 @@ if __name__ == '__main__':
                 pca_matrix += [exp_dct[gene]]
         pca_matrix = np.array(pca_matrix).transpose()
 
+        if len(pca_matrix) == 0:
+            continue
+            
         pca = PCA()
         pca.fit(pca_matrix)
 
@@ -118,7 +121,7 @@ if __name__ == '__main__':
             else:
                 drug_pathway_score_dct[drug][path] = [p_value_f]
     # Output the results to file.
-    out = open('./results/top_pathways_pca.txt', 'w')
+    out = open('./results/top_pathways_pca_hgnc.txt', 'w')
     out.write('num_low_p_first\t%d\tnum_low_p_second\t%d\n' % (num_low_p_first, num_low_p_sec))
     out.write('drug\tpath\tp-value\n')
     for drug in drug_pathway_score_dct:

@@ -16,7 +16,7 @@ MAX_GENES_PER_DRUG = 500
 LOW_P_THRESHOLD = 0.0001
 
 # Extract the NCI pathway data.
-path_file = open('./data/nci_pathway.txt', 'r')
+path_file = open('./data/nci_pathway_hgnc.txt', 'r')
 nci_path_dct = {}
 nci_genes = set([])
 for line in path_file:
@@ -32,14 +32,14 @@ path_file.close()
 # Get the drug responses from the spreadsheet file.
 # Keys are drugs, values are lists of drug responses across all patients.
 drug_resp_dct = OrderedDict({})
-resp_file = open('./data/auc.tsv', 'r')
+resp_file = open('./data/auc_hgnc.tsv', 'r')
 for i, line in enumerate(resp_file):
     if i == 0:
         continue
     # Each row is one drug's performance on each patient.
     line = line.split()
     drug, resp_line = line[0], line[1:]
-    resp_line = [None if resp=='NA' else float(resp) for resp in resp_line]
+    resp_line = [None if resp == 'NA' else float(resp) for resp in resp_line]
     drug_resp_dct[drug] = resp_line
 resp_file.close()
 
@@ -92,7 +92,7 @@ def write_genes_pathways(data_dct, run):
     top_paths = sorted(top_pairs.items(), key=operator.itemgetter(1))
 
     # Write out the results.
-    path_out = open('./results/top_pathways_' + run + '.txt', 'w')
+    path_out = open('./results/top_pathways_%s_hgnc.txt' % run, 'w')
     path_out.write('num_below_%f\t%d\n' % (LOW_P_THRESHOLD, num_low_p))
     path_out.write('drug\tpath\tscore\tinter\tcorr\tpath\tneither\n')    
     for info, p_val in top_paths:
@@ -103,7 +103,7 @@ def write_genes_pathways(data_dct, run):
     path_out.close()
 
     # Sort the top genes by value. Get the top genes.
-    gene_out = open('./results/top_genes_' + run + '.txt', 'w')
+    gene_out = open('./results/top_genes_%s_hgnc.txt' % run, 'w')
     print 'Writing top genes for ' + run + '...'
     all_top_genes = sorted(all_top_genes.items(), key=operator.itemgetter(1))
     for (gene, drug), score in all_top_genes:
@@ -116,7 +116,7 @@ if __name__ == '__main__':
     mut_dct = OrderedDict({})
 
     print 'Extracting the gene expression vectors...'
-    exp_file = open('./data/gene2medProbeExpr.txt', 'r')
+    exp_file = open('./data/gene_expression_hgnc.tsv', 'r')
     for i, line in enumerate(exp_file):
         # Skip the header row.
         if i == 0:
@@ -138,4 +138,4 @@ if __name__ == '__main__':
 
     # Write the top pathways for gene expression and mutation.
     write_genes_pathways(exp_dct, 'exp')
-    write_genes_pathways(mut_dct, 'mut')
+    # write_genes_pathways(mut_dct, 'mut')
