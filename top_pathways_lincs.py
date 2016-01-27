@@ -10,7 +10,7 @@ import sys
 ### Usage: python top_pathways_lincs.py AFT_NUM
 
 Z_SCORE_MIN = 2
-MAX_GENES_PER_DRUG = 500
+MAX_GENES_PER_DRUG = 250
 LOW_P_THRESHOLD = 0.0001 # Count how many pathway-drug pairs are below this.
 
 ### Create new list copy without duplicates.
@@ -30,12 +30,13 @@ if __name__ == '__main__':
     # Define -infinity
     inf = float('-inf')
 
-    # Create dictionary, keys are drug ID's, values are the English drug names.
-    f = open('./data/drug_translation.txt', 'r')
-    trans_dct = {}
-    for line in f:
-        drug_name, drug_id = line.split()
-        trans_dct[drug_id] = drug_name
+    ### Drug translation for Mayo data only.
+    # # Create dictionary, keys are drug ID's, values are the English drug names.
+    # f = open('./data/drug_translation.txt', 'r')
+    # trans_dct = {}
+    # for line in f:
+    #     drug_name, drug_id = line.split()
+    #     trans_dct[drug_id] = drug_name
 
     print 'Extracting NCI pathways...'
     # Dictionary, keys=path names, values=genes in pathway
@@ -43,7 +44,7 @@ if __name__ == '__main__':
     # A set of all of the genes over all NCI pathways.
     nci_genes = set([])
 
-    path_file = open('./data/nci_pathway.txt', 'r')
+    path_file = open('./data/nci_pathway_hgnc.txt', 'r')
     for line in path_file:
         path_name, path_gene = line.strip().split('\t')
         nci_genes.add(path_gene)
@@ -54,24 +55,39 @@ if __name__ == '__main__':
             nci_path_dct[path_name] += [path_gene]
     path_file.close()
 
-    # Extract genes from LINCS level 3
-    f = open('./data/lincs_zscore.txt', 'r')
+    ### This block is for the Mayo data.
+    # # Extract genes from LINCS level 3.
+    # f = open('./data/lincs_zscore.txt', 'r')
+    # genes = []
+    # for i, line in enumerate(f):
+    #     if i == 0:
+    #         continue
+    #     line = line.split()
+    #     # The rows are sorted by genes, and all LINCS data have the same order
+    #     # of genes as the level 3 data.
+    #     genes += [line[1]]
+    # f.close()
+    ###
+
+    ### This block is for the Stuart data.
+    # Extract genes from all_map.txt, provided by Sheng.
+    f = open('./data/all_map.txt', 'r')
     genes = []
     for i, line in enumerate(f):
-        if i == 0:
-            continue
         line = line.split()
         # The rows are sorted by genes, and all LINCS data have the same order
         # of genes as the level 3 data.
         genes += [line[1]]
     f.close()
+    ###
 
     print 'Extracting LINCS data...'
-    f = open('./data/lvl4_combinedPvalue_Aft_%s.txt' % aft_num, 'r')
+    f = open('./data/lvl4_Stuart_combinedPvalue_Aft_%s.txt' % aft_num, 'r')
     drugs = []
     gene_dct = OrderedDict({})
     for i, line in enumerate(f):
         line = line.split()
+        print i
         gene = genes[i-1]
         if i == 0:
             # Take out the lvl4_ prefix
@@ -96,8 +112,10 @@ if __name__ == '__main__':
     drug_matrix = [drugs]
     for gene in gene_dct:
         drug_matrix += [gene_dct[gene]]
+    gene_dct.clear()
     drug_matrix = np.array(drug_matrix).transpose()
 
+    print 'Creating new z-score dictionary...'
     # Change names of the drug ID's to English drug names.
     temp_drug_matrix = OrderedDict({})
     # Make a new dictionary, with keys as drugs, and values as lists of LINCS
@@ -105,7 +123,10 @@ if __name__ == '__main__':
     for i, row in enumerate(drug_matrix):
         raw_string = row[0].split('_')
         drug, cell_line = raw_string[0], raw_string[1]
-        drug, z_scores = trans_dct[drug] + '_' + cell_line, row[1:]
+
+        ### Mayo data translation.
+        # drug, z_scores = trans_dct[drug] + '_' + cell_line, row[1:]
+        drug, z_scores = drug + '_' + cell_line, row[1:]
 
         # Convert to floats again because np.transpose() changes to strings.
         z_scores = map(float, z_scores)
@@ -131,7 +152,7 @@ if __name__ == '__main__':
         top_genes = [genes[i] for i, z_score in top_gene_indices]
         drug_matrix[drug] = top_genes
 
-    out = open('./results/top_pathways_lincs_Aft_%s.txt' % aft_num, 'w')
+    out = open('./results/top_pathways_lincs_Aft_%s_hgnc.txt' % aft_num, 'w')
     # Fisher's test for every drug/cell-line and path pair.
     total_num_genes = len(nci_genes.union(genes))
     fish_dct = {}

@@ -12,7 +12,7 @@ from collections import OrderedDict
 # The maximum p-value to for Pearson's between drug response and gene expression
 # to allow to be a significantly correlated gene for a drug.
 P_THRESHOLD = 0.05
-MAX_GENES_PER_DRUG = 500
+MAX_GENES_PER_DRUG = 250
 LOW_P_THRESHOLD = 0.0001
 
 # Extract the NCI pathway data.
@@ -113,7 +113,7 @@ def write_genes_pathways(data_dct, run):
 if __name__ == '__main__':
     # Keys are genes, values are lists of gene expression across all patients.
     exp_dct = OrderedDict({})
-    mut_dct = OrderedDict({})
+    # mut_dct = OrderedDict({})
 
     print 'Extracting the gene expression vectors...'
     exp_file = open('./data/gene_expression_hgnc.tsv', 'r')
@@ -126,15 +126,15 @@ if __name__ == '__main__':
         exp_dct[gene] = map(float, exp_line)
     exp_file.close()
 
-    print 'Extracting the mutation vectors...'
-    mut_file = open('./data/gene2SNPu50SumParse.txt', 'r')
-    for i, line in enumerate(mut_file):
-        if i == 0:
-            continue
-        line = line.split()
-        gene, mut_line = line[0], line[1:]
-        mut_dct[gene] = map(int, mut_line)
-    mut_file.close()
+    # print 'Extracting the mutation vectors...'
+    # mut_file = open('./data/gene2SNPu50SumParse.txt', 'r')
+    # for i, line in enumerate(mut_file):
+    #     if i == 0:
+    #         continue
+    #     line = line.split()
+    #     gene, mut_line = line[0], line[1:]
+    #     mut_dct[gene] = map(int, mut_line)
+    # mut_file.close()
 
     # Write the top pathways for gene expression and mutation.
     write_genes_pathways(exp_dct, 'exp')

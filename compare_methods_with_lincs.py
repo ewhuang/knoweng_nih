@@ -12,14 +12,14 @@ import sys
 
 if __name__ == '__main__':
     if (len(sys.argv) != 3):
-        print "Usage: " + sys.argv[0] + "AFT_NUM pca/l1/exp"
+        print "Usage: " + sys.argv[0] + " AFT_NUM pca/l1/exp"
         exit(1)
     aft_num = sys.argv[1]
     method = sys.argv[2]
 
     assert (method in ['pca', 'exp'])
 
-    out = open('./results/compare_lincs_Aft_%s_and_%s.txt' % (aft_num, method), 'w')
+    out = open('./results/compare_lincs_Aft_%s_and_%s_hgnc.txt' % (aft_num, method), 'w')
     out.write('p-value\tdrug\tinter\tlincs\t%s' % method)
     out.write('\tneither\to_r\tfish-p\n')
     # Results Processing
@@ -30,7 +30,7 @@ if __name__ == '__main__':
         # For if we want to see the intersections by drug.
         res_drug_dct = {}
 
-        results_file = open('./results/top_pathways_%s.txt' % method, 'r')
+        results_file = open('./results/top_pathways_%s_hgnc.txt' % method, 'r')
         for i, line in enumerate(results_file):
             # Skip the first two lines, as they contain summary of the results.
             if i < 2:
@@ -56,7 +56,7 @@ if __name__ == '__main__':
         results_file.close()
 
         # print 'Extracting level 4 LINCS top pathways...'
-        f = open('./results/top_pathways_lincs_Aft_%s.txt' % aft_num, 'r')
+        f = open('./results/top_pathways_lincs_Aft_%s_hgnc.txt' % aft_num, 'r')
         lincs_cell_line_dct = {}
         lincs_drug_dct = {}
         for i, line in enumerate(f):
@@ -94,22 +94,22 @@ if __name__ == '__main__':
         #     out.write('%f\t%s\t%d\t%d\t' % (p_threshold, cell_line, lincs_and_res, lincs_not_res))
         #     out.write('%d\t%d\t%g\t%g\n' % (res_not_lincs, neither, o_r, p_val))
 
-        for drug in lincs_drug_dct:
-            if drug not in res_drug_dct:
-                continue
-            lincs_below_low_p = lincs_drug_dct[drug]
-            res_below_low_p = res_drug_dct[drug]
-            lincs_and_res = len(lincs_below_low_p.intersection(res_below_low_p))
-            lincs_not_res = len(lincs_below_low_p.difference(res_below_low_p))
-            res_not_lincs = len(res_below_low_p.difference(lincs_below_low_p))
-            neither = len(pathways) - len(lincs_below_low_p.union(res_below_low_p))
+        # for drug in lincs_drug_dct:
+        #     if drug not in res_drug_dct:
+        #         continue
+        #     lincs_below_low_p = lincs_drug_dct[drug]
+        #     res_below_low_p = res_drug_dct[drug]
+        #     lincs_and_res = len(lincs_below_low_p.intersection(res_below_low_p))
+        #     lincs_not_res = len(lincs_below_low_p.difference(res_below_low_p))
+        #     res_not_lincs = len(res_below_low_p.difference(lincs_below_low_p))
+        #     neither = len(pathways) - len(lincs_below_low_p.union(res_below_low_p))
 
-            o_r, p_val = fisher_exact([[lincs_and_res, lincs_not_res],
-                [res_not_lincs, neither]])
+        #     o_r, p_val = fisher_exact([[lincs_and_res, lincs_not_res],
+        #         [res_not_lincs, neither]])
 
-            if o_r > 1.0 and p_val < 0.01:
-                print drug
+        #     if o_r < 1.0 and p_val < 0.05:
+        #         print drug, o_r, p_val, p_threshold
 
-            out.write('%f\t%s\t%d\t%d\t' % (p_threshold, drug, lincs_and_res, lincs_not_res))
-            out.write('%d\t%d\t%g\t%g\n' % (res_not_lincs, neither, o_r, p_val))
+        #     out.write('%f\t%s\t%d\t%d\t' % (p_threshold, drug, lincs_and_res, lincs_not_res))
+        #     out.write('%d\t%d\t%g\t%g\n' % (res_not_lincs, neither, o_r, p_val))
     out.close()
