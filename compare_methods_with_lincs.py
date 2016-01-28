@@ -1,6 +1,7 @@
 ### Author: Edward Huang
 
-from scipy.stats import fisher_exact
+from scipy.stats import fisher_exact, combine_pvalues
+import math
 import sys
 
 ### Takes the drug-pathway scores from either PCA or linear regression L1
@@ -9,6 +10,13 @@ import sys
 ### level 4 LINCS data by finding the size of the intersection of genes that
 ### have p-values below 0.0001, 0.001, 0.01, and 0.05. Computes the Fisher's
 ### test on these intersections, differentiating between cell lines and drugs.
+
+# Different aggregation functions.
+def sum_log_p_values(p_val_lst):
+    return sum([math.log(p_val, 10) for p_val in p_val_lst])
+
+def fishers_method(p_val_lst):
+    return combine_pvalues(p_val_lst, method='fisher')[1]
 
 if __name__ == '__main__':
     if (len(sys.argv) != 3):
@@ -57,8 +65,7 @@ if __name__ == '__main__':
 
         # print 'Extracting level 4 LINCS top pathways...'
         f = open('./results/top_pathways_lincs_Aft_%s_hgnc.txt' % aft_num, 'r')
-        lincs_cell_line_dct = {}
-        lincs_drug_dct = {}
+        lincs_drug_path_dct = {}
         for i, line in enumerate(f):
             # Skip first two lines, they're just results summaries.
             if i < 2:
@@ -66,18 +73,28 @@ if __name__ == '__main__':
 
             # Disregard x, y, z.
             drug, cell_line, path, score, x, y, z = line.strip().split('\t')
-            pathways.add(path)
-            if cell_line not in lincs_cell_line_dct:
-                lincs_cell_line_dct[cell_line] = set([])
-            
-            if float(score) <= p_threshold:
-                lincs_cell_line_dct[cell_line].add((drug, path))
 
+            pathways.add(path)
+            score = float(score)
+
+            if (drug, path) not in lincs_drug_path_dct:
+                lincs_drug_path_dct[(drug, path)] = [score]
+            else:
+                lincs_drug_path_dct[(drug, path)] += [score]
+        f.close()
+
+        lincs_drug_dct = {}
+        # Aggregate the p-values across cell lines for each drug-pathway pair.          
+        for (drug, path) in lincs_drug_path_dct:
+            p_val_lst = lincs_drug_path_dct[(drug, path)]
+            # Change the sum_log_p_values() function for other aggregation
+            # functions.
+            drug_path_p_val = fishers_method(p_val_lst)
+            if drug_path_p_val <= p_threshold:
                 if drug not in lincs_drug_dct:
                     lincs_drug_dct[drug] = set([path])
                 else:
                     lincs_drug_dct[drug].add(path)
-        f.close()
 
         # Loop through every single cell line and find Fisher's with the the
         # results from our methods (pca or exp).
@@ -94,22 +111,22 @@ if __name__ == '__main__':
         #     out.write('%f\t%s\t%d\t%d\t' % (p_threshold, cell_line, lincs_and_res, lincs_not_res))
         #     out.write('%d\t%d\t%g\t%g\n' % (res_not_lincs, neither, o_r, p_val))
 
-        # for drug in lincs_drug_dct:
-        #     if drug not in res_drug_dct:
-        #         continue
-        #     lincs_below_low_p = lincs_drug_dct[drug]
-        #     res_below_low_p = res_drug_dct[drug]
-        #     lincs_and_res = len(lincs_below_low_p.intersection(res_below_low_p))
-        #     lincs_not_res = len(lincs_below_low_p.difference(res_below_low_p))
-        #     res_not_lincs = len(res_below_low_p.difference(lincs_below_low_p))
-        #     neither = len(pathways) - len(lincs_below_low_p.union(res_below_low_p))
+        for drug in lincs_drug_dct:
+            if drug not in res_drug_dct:
+                continue
+            lincs_below_low_p = lincs_drug_dct[drug]
+            res_below_low_p = res_drug_dct[drug]
+            lincs_and_res = len(lincs_below_low_p.intersection(res_below_low_p))
+            lincs_not_res = len(lincs_below_low_p.difference(res_below_low_p))
+            res_not_lincs = len(res_below_low_p.difference(lincs_below_low_p))
+            neither = len(pathways) - len(lincs_below_low_p.union(res_below_low_p))
 
-        #     o_r, p_val = fisher_exact([[lincs_and_res, lincs_not_res],
-        #         [res_not_lincs, neither]])
+            o_r, p_val = fisher_exact([[lincs_and_res, lincs_not_res],
+                [res_not_lincs, neither]])
 
-        #     if o_r < 1.0 and p_val < 0.05:
-        #         print drug, o_r, p_val, p_threshold
+            if o_r > 1.0 and p_val < 0.05:
+                print drug, o_r, p_val, p_threshold
 
-        #     out.write('%f\t%s\t%d\t%d\t' % (p_threshold, drug, lincs_and_res, lincs_not_res))
-        #     out.write('%d\t%d\t%g\t%g\n' % (res_not_lincs, neither, o_r, p_val))
+            out.write('%f\t%s\t%d\t%d\t' % (p_threshold, drug, lincs_and_res, lincs_not_res))
+            out.write('%d\t%d\t%g\t%g\n' % (res_not_lincs, neither, o_r, p_val))
     out.close()
