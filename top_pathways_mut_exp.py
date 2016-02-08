@@ -66,7 +66,7 @@ def write_genes_pathways(data_dct, run):
             # Find the pearson coefficient between these two lists.
             pcc, p_value = pearsonr(drug_resp, gene_data)
             if p_value < P_THRESHOLD:
-                all_top_genes[(gene, drug)] = p_value
+                all_top_genes[(gene, drug)] = pcc
                 drug_top_genes[gene] = p_value
         # These are the top correlated genes for each drug.
         top_genes = sorted(drug_top_genes.items(),
@@ -105,7 +105,7 @@ def write_genes_pathways(data_dct, run):
     # Sort the top genes by value. Get the top genes.
     gene_out = open('./results/top_genes_%s_hgnc.txt' % run, 'w')
     print 'Writing top genes for ' + run + '...'
-    all_top_genes = sorted(all_top_genes.items(), key=operator.itemgetter(1))
+    all_top_genes = sorted(all_top_genes.items(), key=operator.itemgetter(1), reverse=True)
     for (gene, drug), score in all_top_genes:
         gene_out.write(gene + '\t' + drug + '\t' + str(score) + '\n') 
     gene_out.close()
