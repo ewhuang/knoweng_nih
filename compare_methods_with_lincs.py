@@ -18,16 +18,12 @@ def sum_log_p_values(p_val_lst):
 def fishers_method(p_val_lst):
     return combine_pvalues(p_val_lst, method='fisher')[1]
 
-if __name__ == '__main__':
-    if (len(sys.argv) != 3):
-        print "Usage: " + sys.argv[0] + " AFT_NUM pca/l1/exp"
-        exit(1)
-    aft_num = sys.argv[1]
-    method = sys.argv[2]
+def min_p_exp(p_val_lst):
+    return 1 - math.pow((1 - min(p_val_lst)), len(p_val_lst))
 
-    assert (method in ['pca', 'exp'])
+def compare_methods(aft_num, method, in_filename, out_filename):
 
-    out = open('./results/compare_lincs_Aft_%s_and_%s_hgnc.txt' % (aft_num, method), 'w')
+    out = open(out_filename, 'w')
     out.write('p-value\tdrug\tinter\tlincs\t%s' % method)
     out.write('\tneither\to_r\tfish-p\n')
     # Results Processing
@@ -38,7 +34,31 @@ if __name__ == '__main__':
         # For if we want to see the intersections by drug.
         res_drug_dct = {}
 
-        results_file = open('./results/top_pathways_%s_hgnc.txt' % method, 'r')
+        # If the method is embedding, then we must first open the top pathways
+        # from the expression data.
+        if method == 'embed':
+            f = open('./results/top_pathways_exp_hgnc.txt', 'r')
+            # We need to find out for each threshold, the number of pathways for
+            # each drug-pathway pair that are better than the threshld.
+            exp_num_paths_per_drug_dct = {}
+            for i, line in enumerate(f):
+                # Skip header lines.
+                if i < 2:
+                    continue
+                raw_string = line.strip().split('\t')
+                drug, path, score = raw_string[0], raw_string[1], raw_string[2]
+                
+                if score == '[]':
+                    continue
+
+                if float(score) <= p_threshold:
+                    if drug not in exp_num_paths_per_drug_dct:
+                        exp_num_paths_per_drug_dct[drug] = 1
+                    else:
+                        exp_num_paths_per_drug_dct[drug] += 1
+            f.close()
+
+        results_file = open(in_filename, 'r')
         for i, line in enumerate(results_file):
             # Skip the first two lines, as they contain summary of the results.
             if i < 2:
@@ -55,12 +75,23 @@ if __name__ == '__main__':
 
             pathways.add(path)
 
-            if float(score) <= p_threshold:
-                res_below_low_p.add((drug, path))
+            if method != 'embed' and float(score) <= p_threshold:
+                # res_below_low_p.add((drug, path))
                 if drug not in res_drug_dct:
                     res_drug_dct[drug] = set([path])
                 else:
                     res_drug_dct[drug].add(path)
+            elif method == 'embed':
+                if drug not in exp_num_paths_per_drug_dct:
+                    continue
+                if drug not in res_drug_dct:
+                    res_drug_dct[drug] = set([path])
+                elif drug in res_drug_dct:
+                    if exp_num_paths_per_drug_dct[drug] == len(res_drug_dct[drug]):
+                        continue
+                    else:
+                        res_drug_dct[drug].add(path)
+
         results_file.close()
 
         # print 'Extracting level 4 LINCS top pathways...'
@@ -89,7 +120,7 @@ if __name__ == '__main__':
             p_val_lst = lincs_drug_path_dct[(drug, path)]
             # Change the sum_log_p_values() function for other aggregation
             # functions.
-            drug_path_p_val = fishers_method(p_val_lst)
+            drug_path_p_val = min_p_exp(p_val_lst)
             if drug_path_p_val <= p_threshold:
                 if drug not in lincs_drug_dct:
                     lincs_drug_dct[drug] = set([path])
@@ -124,9 +155,31 @@ if __name__ == '__main__':
             o_r, p_val = fisher_exact([[lincs_and_res, lincs_not_res],
                 [res_not_lincs, neither]])
 
-            if o_r > 1.0 and p_val < 0.05:
-                print drug, o_r, p_val, p_threshold
+            # if o_r > 1.0 and p_val < 0.05:
+            #     print drug, o_r, p_val, p_threshold
 
             out.write('%f\t%s\t%d\t%d\t' % (p_threshold, drug, lincs_and_res, lincs_not_res))
             out.write('%d\t%d\t%g\t%g\n' % (res_not_lincs, neither, o_r, p_val))
     out.close()
+
+if __name__ == '__main__':
+    if (len(sys.argv) != 3):
+        print "Usage: " + sys.argv[0] + " AFT_NUM pca/exp/embed"
+        exit(1)
+    aft_num = sys.argv[1]
+    method = sys.argv[2]
+
+    assert (method in ['pca', 'exp', 'embed', 'l1'])
+
+    if method == 'embed':
+        for num in [50, 100, 500, 1000, 1500, 2000]:
+            num = str(num)
+            for suffix in ['U', 'US']:
+                extension = '%s_0.8.%s' % (num, suffix)
+                in_filename = './results/embedding/top_pathways_%s' % extension
+                out_filename = './results/compare_lincs_Aft_%s_and_%s_hgnc.txt' % (aft_num, extension)
+                compare_methods(aft_num, method, in_filename, out_filename)
+    else:
+        in_filename = './results/top_pathways_%s_hgnc.txt' % method
+        out_filename = './results/compare_lincs_Aft_%s_and_%s_hgnc.txt' % (aft_num, method)
+        compare_methods(aft_num, method, in_filename, out_filename)

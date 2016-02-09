@@ -129,5 +129,7 @@ if __name__ == '__main__':
             for i, score in enumerate(drug_pathway_score_dct[drug][path]):
                 # The i+1 is to differentiate between 1st and 2nd principal
                 # components.
+                if i+1 == 2:
+                    continue
                 out.write('%s\t%s_%d\t%s\n' % (drug, path, i+1, str(score)))
     out.close()
