@@ -36,7 +36,7 @@ def compare_methods(aft_num, method, in_filename, out_filename):
 
         # If the method is embedding, then we must first open the top pathways
         # from the expression data.
-        if method == 'embed':
+        if method == 'embed' or method == 'l1':
             f = open('./results/top_pathways_exp_hgnc.txt', 'r')
             # We need to find out for each threshold, the number of pathways for
             # each drug-pathway pair that are better than the threshld.
@@ -75,13 +75,13 @@ def compare_methods(aft_num, method, in_filename, out_filename):
 
             pathways.add(path)
 
-            if method != 'embed' and float(score) <= p_threshold:
+            if method != 'embed' and method != 'l1' and float(score) <= p_threshold:
                 # res_below_low_p.add((drug, path))
                 if drug not in res_drug_dct:
                     res_drug_dct[drug] = set([path])
                 else:
                     res_drug_dct[drug].add(path)
-            elif method == 'embed':
+            elif method == 'embed' or method == 'l1':
                 if drug not in exp_num_paths_per_drug_dct:
                     continue
                 if drug not in res_drug_dct:
@@ -164,7 +164,7 @@ def compare_methods(aft_num, method, in_filename, out_filename):
 
 if __name__ == '__main__':
     if (len(sys.argv) != 3):
-        print "Usage: " + sys.argv[0] + " AFT_NUM pca/exp/embed"
+        print "Usage: " + sys.argv[0] + " AFT_NUM pca/exp/embed/l1"
         exit(1)
     aft_num = sys.argv[1]
     method = sys.argv[2]
@@ -172,13 +172,14 @@ if __name__ == '__main__':
     assert (method in ['pca', 'exp', 'embed', 'l1'])
 
     if method == 'embed':
-        for num in [50, 100, 500, 1000, 1500, 2000]:
-            num = str(num)
-            for suffix in ['U', 'US']:
-                extension = '%s_0.8.%s' % (num, suffix)
-                in_filename = './results/embedding/top_pathways_%s' % extension
-                out_filename = './results/compare_lincs_Aft_%s_and_%s_hgnc.txt' % (aft_num, extension)
-                compare_methods(aft_num, method, in_filename, out_filename)
+        for top_k in [5, 10, 20, 50, 100, 200]:#, 100, 200, 500, 1000]:
+            for num in [50, 100, 500, 1000, 1500, 2000]:
+                num = str(num)
+                for suffix in ['U', 'US']:
+                    extension = '%s_0.8.%s' % (num, suffix)
+                    in_filename = './results/embedding/top_pathways_%s_top_%d.txt' % (extension, top_k)
+                    out_filename = './results/compare_lincs_Aft_%s_and_%s_top_%d_hgnc.txt' % (aft_num, extension, top_k)
+                    compare_methods(aft_num, method, in_filename, out_filename)
     else:
         in_filename = './results/top_pathways_%s_hgnc.txt' % method
         out_filename = './results/compare_lincs_Aft_%s_and_%s_hgnc.txt' % (aft_num, method)

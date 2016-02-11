@@ -5,7 +5,7 @@
 
 if __name__ == '__main__':
     f = open('./results/nci_pathway_ranking_name.txt', 'r')
-    out = open('./results/top_pathways_l1.txt', 'w')
+    out = open('./results/top_pathways_l1_hgnc.txt', 'w')
     # Write in the filler lines
     out.write('filler\ndrug\tpath\tscore\n')
     for line in f:

@@ -12,9 +12,7 @@ import operator
 ### gene vectors in the embedding file, multiplied by the correlation between
 ### the gene and drug response for the drug.
 
-TOP_GENES_PER_DRUG = 5
-
-if __name__ == '__main__':
+def find_top_pathways(top_genes_per_drug):
     pathways = set([])
     f = open('./data/nci_pathway_hgnc.txt', 'r')
     for line in f:
@@ -50,7 +48,7 @@ if __name__ == '__main__':
         if drug not in drug_top_genes_dct:
             drug_top_genes_dct[drug] = {}
             drug_top_genes_dct[drug][gene] = p_val
-        elif len(drug_top_genes_dct[drug]) == TOP_GENES_PER_DRUG:
+        elif len(drug_top_genes_dct[drug]) == top_genes_per_drug:
             continue
         else:
             drug_top_genes_dct[drug][gene] = p_val
@@ -85,7 +83,8 @@ if __name__ == '__main__':
             f.close()
 
             # Calculate the score for each drug-pathway pair.
-            out = open('./results/embedding/top_pathways_%s' % extension, 'w')
+            out = open('./results/embedding/top_pathways_%s_top_%d.txt' 
+                % (extension, top_genes_per_drug), 'w')
             score_dct = {}
             out.write('filler\n')
             out.write('drug\tpath\tscore\n')
@@ -113,3 +112,7 @@ if __name__ == '__main__':
             for (drug, pathway), score in score_dct:
                 out.write('%s\t%s\t%f\n' % (drug, pathway, score))
             out.close()
+
+if __name__ == '__main__':
+    for top_genes_per_drug in [5, 10, 20, 50, 100, 200, 500, 1000]:
+        find_top_pathways(top_genes_per_drug)
