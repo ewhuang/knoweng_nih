@@ -1,8 +1,8 @@
 ### Author: Edward Huang
 
-from scipy import spatial
 from collections import OrderedDict
 import operator
+import math
 
 ### This script opens the embedding data and performs drug/pathway analysis.
 ### We first translate the rows to the right genes and pathways, given by the
@@ -11,6 +11,16 @@ import operator
 ### for a drug, taking the cosine similarity between the pathway and the
 ### gene vectors in the embedding file, multiplied by the correlation between
 ### the gene and drug response for the drug.
+
+def cosine_similarity(v1,v2):
+    "compute cosine similarity of v1 to v2: (v1 dot v2)/{||v1||*||v2||)"
+    sumxx, sumxy, sumyy = 0, 0, 0
+    for i in range(len(v1)):
+        x = v1[i]; y = v2[i]
+        sumxx += x*x
+        sumyy += y*y
+        sumxy += x*y
+    return sumxy/math.sqrt(sumxx*sumyy)
 
 def find_top_pathways(top_genes_per_drug):
     pathways = set([])
@@ -100,7 +110,7 @@ def find_top_pathways(top_genes_per_drug):
 
                     for gene in gene_p_val_dct:
                         gene_vec = entity_vector_dct[gene]
-                        cos = 1 - spatial.distance.cosine(pathway_vec, gene_vec)
+                        cos = cosine_similarity(pathway_vec, gene_vec)
                         # Also get the correlation between gene and drug
                         # response.
                         gene_drug_corr = gene_p_val_dct[gene]
@@ -114,5 +124,6 @@ def find_top_pathways(top_genes_per_drug):
             out.close()
 
 if __name__ == '__main__':
-    for top_genes_per_drug in [5, 10, 20, 50, 100, 200, 500, 1000]:
-        find_top_pathways(top_genes_per_drug)
+    # for top_genes_per_drug in [5, 10, 20, 50, 100, 200, 500, 1000]:
+        # find_top_pathways(top_genes_per_drug)
+    find_top_pathways(250)
