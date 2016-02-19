@@ -59,4 +59,4 @@ Then
 
 Then
 >>> summary_comparison_with_lincs.py
-This script computes the summary table for all of our methods.
+This script computes the 4x4 summary table for all of our methods.

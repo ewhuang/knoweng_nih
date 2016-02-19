@@ -3,6 +3,7 @@
 from collections import OrderedDict
 import operator
 import math
+import sys
 
 ### This script opens the embedding data and performs drug/pathway analysis.
 ### We first translate the rows to the right genes and pathways, given by the
@@ -22,7 +23,7 @@ def cosine_similarity(v1,v2):
         sumxy += x*y
     return sumxy/math.sqrt(sumxx*sumyy)
 
-def find_top_pathways(top_genes_per_drug):
+def find_top_pathways(network, top_k):
     pathways = set([])
     f = open('./data/nci_pathway_hgnc.txt', 'r')
     for line in f:
@@ -58,7 +59,7 @@ def find_top_pathways(top_genes_per_drug):
         if drug not in drug_top_genes_dct:
             drug_top_genes_dct[drug] = {}
             drug_top_genes_dct[drug][gene] = p_val
-        elif len(drug_top_genes_dct[drug]) == top_genes_per_drug:
+        elif len(drug_top_genes_dct[drug]) == top_k:
             continue
         else:
             drug_top_genes_dct[drug][gene] = p_val
@@ -72,13 +73,21 @@ def find_top_pathways(top_genes_per_drug):
     f.close()
 
     # Loop through the files.
-    for num in [50, 100, 500, 1000, 1500, 2000]:
-        num = str(num)
+    if network == 'ppi':
+        # We ran more dimensions for the ppi network.
+        dimension_list = [50, 100, 500, 1000, 1500, 2000]
+    else:
+        dimension_list = [50, 100, 500]
+    for dim in map(str, dimension_list):
         for suffix in ['U', 'US']:
             entity_vector_dct = OrderedDict({})
 
-            extension = '%s_0.8.%s' % (num, suffix)
-            filename = './data/embedding/ppi_6_net_%s' % extension
+            extension = '%s_0.8.%s' % (dim, suffix)
+            if network == 'ppi':
+                filename = './data/embedding/ppi_6_net_%s' % extension
+            else:
+                filename = './data/embedding/%s.network_net_%s' % (network, 
+                    extension)
             f = open(filename, 'r')
             for i, line in enumerate(f):
                 # There should be the same number of rows in the embedding files
@@ -93,8 +102,8 @@ def find_top_pathways(top_genes_per_drug):
             f.close()
 
             # Calculate the score for each drug-pathway pair.
-            out = open('./results/embedding/top_pathways_%s_top_%d.txt' 
-                % (extension, top_genes_per_drug), 'w')
+            out = open('./results/embedding/%s_top_pathways_%s_top_%d.txt' 
+                % (network, extension, top_k), 'w')
             score_dct = {}
             out.write('filler\n')
             out.write('drug\tpath\tscore\n')
@@ -124,6 +133,10 @@ def find_top_pathways(top_genes_per_drug):
             out.close()
 
 if __name__ == '__main__':
-    # for top_genes_per_drug in [5, 10, 20, 50, 100, 200, 500, 1000]:
-        # find_top_pathways(top_genes_per_drug)
-    find_top_pathways(250)
+    if (len(sys.argv) != 3):
+        print "Usage: " + sys.argv[0] + " ppi/genetic/literome/sequence top_k"
+        exit(1)
+    top_k = int(sys.argv[2])
+    network = sys.argv[1]
+    assert network in ['ppi', 'genetic', 'literome', 'sequence']
+    find_top_pathways(network, top_k)

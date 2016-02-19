@@ -53,7 +53,7 @@ if __name__ == '__main__':
     summarize_file_and_write(exp_fname)
 
     # Embedding summaries.
-    for top_k in [5, 10, 20, 50, 100, 200]: # TODO
+    for top_k in [250]: # TODO
         for num in [50, 100, 500, 1000, 1500, 2000]:
             num = str(num)
             for suffix in ['U', 'US']:
@@ -78,7 +78,7 @@ if __name__ == '__main__':
     exp_file.close()
 
     # Get the embedding summaries.
-    for top_k in [5, 10, 20, 50, 100, 200]: # TODO
+    for top_k in [250]: # TODO
         for num in [50, 100, 500, 1000, 1500, 2000]:
             num = str(num)
             for suffix in ['U', 'US']:
