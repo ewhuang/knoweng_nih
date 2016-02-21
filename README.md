@@ -49,13 +49,13 @@ the top of the script.
 ______________________________________
 Run embedding_top_pathways.py to find the top pathways for the embedding method.
 
->>> python embedding_top_pathways.py
+>>> python embedding_top_pathways.py METHOD top_k
 
 Same format as the other top pathways. However, we can tune the top k pathways
 to keep.
 
 Then 
->>> python compare_methods_with_lincs.py 3 embed
+>>> python compare_methods_with_lincs.py ppi/genetic/literome/sequence TOP_K
 
 Then
 >>> summary_comparison_with_lincs.py

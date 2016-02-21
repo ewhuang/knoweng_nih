@@ -53,15 +53,19 @@ if __name__ == '__main__':
     summarize_file_and_write(exp_fname)
 
     # Embedding summaries.
-    for top_k in [250]: # TODO
-        for num in [50, 100, 500, 1000, 1500, 2000]:
-            num = str(num)
-            for suffix in ['U', 'US']:
-                entity_vector_dct = OrderedDict({})
+    for method in ['genetic', 'literome', 'sequence']: # SKIP PPI RIGHT NOW
+        if method == 'ppi':
+            dimensions = map(str, [50, 100, 500, 1000, 1500, 2000])
+        else:
+            dimensions = map(str, [50, 100, 500])
+        for top_k in [250]: # TODO
+            for dim in dimensions:
+                for suffix in ['U', 'US']:
+                    entity_vector_dct = OrderedDict({})
 
-                extension = '%s_0.8.%s' % (num, suffix)
-                embedding_fname = base + extension + '_top_%d_hgnc.txt' % (top_k)
-                summarize_file_and_write(embedding_fname)
+                    extension = '%s_0.8.%s' % (dim, suffix)
+                    embedding_fname = base + method + '_' + extension + '_top_%d_hgnc.txt' % (top_k)
+                    summarize_file_and_write(embedding_fname)
 
     # L1 summaries.
     l1_fname = base + 'l1_hgnc.txt'
