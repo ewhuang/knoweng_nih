@@ -13,15 +13,15 @@ import sys
 ### gene vectors in the embedding file, multiplied by the correlation between
 ### the gene and drug response for the drug.
 
-def cosine_similarity(v1,v2):
+def cosine_similarity(v1, v2):
     "compute cosine similarity of v1 to v2: (v1 dot v2)/{||v1||*||v2||)"
     sumxx, sumxy, sumyy = 0, 0, 0
     for i in range(len(v1)):
         x = v1[i]; y = v2[i]
-        sumxx += x*x
-        sumyy += y*y
-        sumxy += x*y
-    return sumxy/math.sqrt(sumxx*sumyy)
+        sumxx += x * x
+        sumyy += y * y
+        sumxy += x * y
+    return sumxy / math.sqrt(sumxx * sumyy)
 
 def find_top_pathways(network, top_k):
     pathways = set([])
@@ -29,48 +29,40 @@ def find_top_pathways(network, top_k):
     for line in f:
         pathway, gene = line.strip().split('\t')
         pathways.add(pathway)
-        # assert (len(line) == 2)
     f.close()
 
-    # Find the shared genes.
-    exp_genes = set([])
-    f = open('./results/top_genes_exp_hgnc.txt', 'r')
-    for line in f:
-        gene, drug, p_val = line.split()
-        exp_genes.add(gene)
-    f.close()
-
-    embed_genes = set([])
-    f = open('./data/embedding/gene_pathway_id.txt', 'r')
-    for line in f:
-        embed_genes.add(line.strip())
-    f.close()
-
-    shared_genes = exp_genes.intersection(embed_genes)
-
-    # Find the top genes for each drug.
-    drug_top_genes_dct = {}
-    f = open('./results/top_genes_exp_hgnc.txt', 'r')
-    for line in f:
-        gene, drug, p_val = line.split()
-        if gene not in shared_genes:
-            continue
-        p_val = float(p_val)
-        if drug not in drug_top_genes_dct:
-            drug_top_genes_dct[drug] = {}
-            drug_top_genes_dct[drug][gene] = p_val
-        elif len(drug_top_genes_dct[drug]) == top_k:
-            continue
-        else:
-            drug_top_genes_dct[drug][gene] = p_val
-    f.close()
-
+    # Find genes and pathways that appear in embedding.
     gene_pathway_lst = []
     f = open('./data/embedding/gene_pathway_id.txt', 'r')
     for line in f:
         # entity is either a gene or a pathway.
         gene_pathway_lst += [line.strip()]
     f.close()
+
+    # Find the top genes for each drug.
+    shared_genes = set([])
+    drug_top_genes_dct = {}
+    f = open('./results/top_genes_exp_hgnc.txt', 'r')
+    for line in f:
+        gene, drug, p_val = line.split()
+        if gene not in gene_pathway_lst:
+            continue
+        # The gene appears in both expression and embedding.
+        shared_genes.add(gene)
+        p_val = float(p_val)
+        if drug not in drug_top_genes_dct:
+            drug_top_genes_dct[drug] = {gene: p_val}
+            assert (len(drug_top_genes_dct[drug]) < top_k)
+        elif len(drug_top_genes_dct[drug]) == top_k:
+            # We have added enough genes for the drug.
+            continue
+        else:
+            drug_top_genes_dct[drug][gene] = p_val
+    f.close()
+
+    # Check that each drug has exactly top_k number of genes.
+    for drug in drug_top_genes_dct:
+        assert len(drug_top_genes_dct[drug]) == top_k
 
     # Loop through the files.
     if network == 'ppi':
@@ -97,8 +89,7 @@ def find_top_pathways(network, top_k):
                 if entity not in shared_genes and entity not in pathways:
                     continue
                 # Convert lines to floats.
-                vector = map(float, line.split())
-                entity_vector_dct[entity] = vector
+                entity_vector_dct[entity] = map(float, line.split())
             f.close()
 
             # Calculate the score for each drug-pathway pair.
@@ -114,7 +105,7 @@ def find_top_pathways(network, top_k):
                 # vector.
                 for pathway in pathways:
                     # Initialize the score.
-                    drug_path_score = 0
+                    drug_path_score = 0.0
                     pathway_vec = entity_vector_dct[pathway]
 
                     for gene in gene_p_val_dct:
@@ -136,7 +127,7 @@ if __name__ == '__main__':
     if (len(sys.argv) != 3):
         print "Usage: " + sys.argv[0] + " ppi/genetic/literome/sequence top_k"
         exit(1)
-    top_k = int(sys.argv[2])
     network = sys.argv[1]
+    top_k = int(sys.argv[2])
     assert network in ['ppi', 'genetic', 'literome', 'sequence']
     find_top_pathways(network, top_k)

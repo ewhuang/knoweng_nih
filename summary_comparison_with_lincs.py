@@ -52,20 +52,21 @@ if __name__ == '__main__':
     exp_fname = base + 'exp_hgnc.txt'
     summarize_file_and_write(exp_fname)
 
+    top_k = 250
+
     # Embedding summaries.
     for method in ['genetic', 'literome', 'sequence']: # SKIP PPI RIGHT NOW
         if method == 'ppi':
             dimensions = map(str, [50, 100, 500, 1000, 1500, 2000])
         else:
             dimensions = map(str, [50, 100, 500])
-        for top_k in [250]: # TODO
-            for dim in dimensions:
-                for suffix in ['U', 'US']:
-                    entity_vector_dct = OrderedDict({})
+        for dim in dimensions:
+            for suffix in ['U', 'US']:
+                entity_vector_dct = OrderedDict({})
 
-                    extension = '%s_0.8.%s' % (dim, suffix)
-                    embedding_fname = base + method + '_' + extension + '_top_%d_hgnc.txt' % (top_k)
-                    summarize_file_and_write(embedding_fname)
+                extension = '%s_0.8.%s' % (dim, suffix)
+                embedding_fname = base + method + '_' + extension + '_top_%d_hgnc.txt' % (top_k)
+                summarize_file_and_write(embedding_fname)
 
     # L1 summaries.
     l1_fname = base + 'l1_hgnc.txt'
@@ -87,24 +88,23 @@ if __name__ == '__main__':
             dimensions = map(str, [50, 100, 500, 1000, 1500, 2000])
         else:
             dimensions = map(str, [50, 100, 500])
-        for top_k in [250]: # TODO
-            for num in dimensions:
-                for suffix in ['U', 'US']:
-                    entity_vector_dct = OrderedDict({})
+        for num in dimensions:
+            for suffix in ['U', 'US']:
+                entity_vector_dct = OrderedDict({})
 
-                    extension = '%s_0.8.%s' % (num, suffix)
-                    embedding_fname = './results/summ_compare_lincs_Aft_3_and_' + method + '_' + extension + '_top_%d_hgnc.txt' % (top_k)
-                    embedding_table = []
-                    f = open(embedding_fname, 'r')
-                    for i, line in enumerate(f):
-                        if i == 0:
-                            continue
-                        line = map(float, line.split())[1:]
-                        embedding_table += line
-                    f.close()
-                    num_better_than_expresion = 0
-                    for i, val in enumerate(embedding_table):
-                        if val > exp_table[i]:
-                            num_better_than_expresion += 1
-                    if num_better_than_expresion > 8:
-                        print embedding_fname
+                extension = '%s_0.8.%s' % (num, suffix)
+                embedding_fname = './results/summ_compare_lincs_Aft_3_and_' + method + '_' + extension + '_top_%d_hgnc.txt' % (top_k)
+                embedding_table = []
+                f = open(embedding_fname, 'r')
+                for i, line in enumerate(f):
+                    if i == 0:
+                        continue
+                    line = map(float, line.split())[1:]
+                    embedding_table += line
+                f.close()
+                num_better_than_expresion = 0
+                for i, val in enumerate(embedding_table):
+                    if val > exp_table[i]:
+                        num_better_than_expresion += 1
+                if num_better_than_expresion > 8:
+                    print embedding_fname
