@@ -29,10 +29,6 @@ def summarize_file_and_write(in_filename):
                     table_dct[(threshold, fisher_p_thresh)] = 1
     f.close()
 
-    ### This threshold range definition has duplicate thresholds. Use the
-    ### hardcoded one for now.
-    # threshold_range = [threshold for threshold, fisher_p_thresh in table_dct]
-    
     out = open(in_filename[:10] + 'summ_' + in_filename[10:], 'w')
     out.write('\t' + '\t'.join(map(str, fisher_p_range)) + '\n')
     for threshold in threshold_range:
@@ -55,7 +51,7 @@ if __name__ == '__main__':
     top_k = 250
 
     # Embedding summaries.
-    for method in ['genetic', 'literome', 'sequence']: # SKIP PPI RIGHT NOW
+    for method in ['genetic', 'literome', 'sequence', 'ppi']: # SKIP PPI RIGHT NOW
         if method == 'ppi':
             dimensions = map(str, [50, 100, 500, 1000, 1500, 2000])
         else:
@@ -65,7 +61,8 @@ if __name__ == '__main__':
                 entity_vector_dct = OrderedDict({})
 
                 extension = '%s_0.8.%s' % (dim, suffix)
-                embedding_fname = base + method + '_' + extension + '_top_%d_hgnc.txt' % (top_k)
+                embedding_fname = base + method + '_' + extension +\
+                    '_top_%d_hgnc.txt' % (top_k)
                 summarize_file_and_write(embedding_fname)
 
     # L1 summaries.
@@ -83,7 +80,7 @@ if __name__ == '__main__':
     exp_file.close()
 
     # Get the embedding summaries.
-    for method in ['genetic', 'literome', 'sequence']: # SKIP PPI RIGHT NOW
+    for method in ['genetic', 'literome', 'sequence','ppi']: # SKIP PPI RIGHT NOW
         if method == 'ppi':
             dimensions = map(str, [50, 100, 500, 1000, 1500, 2000])
         else:
@@ -93,7 +90,8 @@ if __name__ == '__main__':
                 entity_vector_dct = OrderedDict({})
 
                 extension = '%s_0.8.%s' % (num, suffix)
-                embedding_fname = './results/summ_compare_lincs_Aft_3_and_' + method + '_' + extension + '_top_%d_hgnc.txt' % (top_k)
+                embedding_fname = './results/summ_compare_lincs_Aft_3_and_' +\
+                    method + '_' + extension + '_top_%d_hgnc.txt' % (top_k)
                 embedding_table = []
                 f = open(embedding_fname, 'r')
                 for i, line in enumerate(f):
@@ -102,9 +100,9 @@ if __name__ == '__main__':
                     line = map(float, line.split())[1:]
                     embedding_table += line
                 f.close()
-                num_better_than_expresion = 0
+                num_better_than_expression = 0
                 for i, val in enumerate(embedding_table):
                     if val > exp_table[i]:
-                        num_better_than_expresion += 1
-                if num_better_than_expresion > 8:
+                        num_better_than_expression += 1
+                if num_better_than_expression > 8:
                     print embedding_fname

@@ -83,14 +83,12 @@ if __name__ == '__main__':
         if i == 0:
             out.write('gid\t')
             ge_ccl = line.split()[2:]
-            # The set of cell lines in gene expression but not in drug response.
-            ge_not_dr = set(ge_ccl).difference(ccl_lst)
-            # Find indices of cell lines that should not be written out.
-            ge_not_dr_indices = [i for i, e in enumerate(ge_ccl) if e not in ge_not_dr]
-            ge_ccl = [ge_ccl[i] for i in ge_not_dr_indices]
-
+            assert len(set(ccl_lst).difference(ge_ccl)) == 0
+            
             ge_indices = [ge_ccl.index(cl) for cl in ccl_lst]
+
             ge_ccl = [ge_ccl[i] for i in ge_indices]
+            
             out.write('\t'.join(ge_ccl) + '\n')
             continue
         line = line.split()[1:]
@@ -102,5 +100,6 @@ if __name__ == '__main__':
             cell_lines = [cell_lines[i] for i in ge_indices]
 
             out.write(gene_id + '\t' + '\t'.join(cell_lines) + '\n')
+            exit()
     f.close()
     out.close()

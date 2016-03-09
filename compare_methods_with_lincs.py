@@ -144,7 +144,8 @@ def compare_methods(AFT_NUM, method, in_filename, out_filename):
             ft = fisher_test.FishersExactTest(f_table)
             p_val = ft.two_tail_p()
 
-            out.write('%f\t%s\t%d\t%d\t' % (p_thresh, drug, lincs_and_res, lincs_not_res))
+            out.write('%f\t%s\t%d\t%d\t' % (p_thresh, drug, lincs_and_res,
+                lincs_not_res))
             out.write('%d\t%d\t%g\n' % (res_not_lincs, neither, p_val))
     out.close()
 

@@ -13,14 +13,6 @@ Z_SCORE_MIN = 2
 MAX_GENES_PER_DRUG = 250
 LOW_P_THRESHOLD = 0.0001 # Count how many pathway-drug pairs are below this.
 
-### Create new list copy without duplicates.
-def create_no_dup(lst):
-    new_lst = []
-    for e in lst:
-        if e not in new_lst:
-            new_lst.append(e)
-    return new_lst
-
 if __name__ == '__main__':
     if len(sys.argv) != 2:
         print 'Usage: %s AFT-NUM' % sys.argv[0]
@@ -29,14 +21,6 @@ if __name__ == '__main__':
 
     # Define -infinity
     inf = float('-inf')
-
-    ### Drug translation for Mayo data only.
-    # # Create dictionary, keys are drug ID's, values are the English drug names.
-    # f = open('./data/drug_translation.txt', 'r')
-    # trans_dct = {}
-    # for line in f:
-    #     drug_name, drug_id = line.split()
-    #     trans_dct[drug_id] = drug_name
 
     print 'Extracting NCI pathways...'
     # Dictionary, keys=path names, values=genes in pathway
@@ -48,28 +32,12 @@ if __name__ == '__main__':
     for line in path_file:
         path_name, path_gene = line.strip().split('\t')
         nci_genes.add(path_gene)
-        
-        if path_name not in nci_path_dct:
-            nci_path_dct[path_name] = [path_gene]
-        else:
+        if path_name in nci_path_dct:
             nci_path_dct[path_name] += [path_gene]
+        else:
+            nci_path_dct[path_name] = [path_gene]
     path_file.close()
 
-    ### This block is for the Mayo data.
-    # # Extract genes from LINCS level 3.
-    # f = open('./data/lincs_zscore.txt', 'r')
-    # genes = []
-    # for i, line in enumerate(f):
-    #     if i == 0:
-    #         continue
-    #     line = line.split()
-    #     # The rows are sorted by genes, and all LINCS data have the same order
-    #     # of genes as the level 3 data.
-    #     genes += [line[1]]
-    # f.close()
-    ###
-
-    ### This block is for the Stuart data.
     # Extract genes from all_map.txt, provided by Sheng.
     f = open('./data/all_map.txt', 'r')
     genes = []
@@ -79,7 +47,6 @@ if __name__ == '__main__':
         # of genes as the level 3 data.
         genes += [line[1]]
     f.close()
-    ###
 
     print 'Extracting LINCS data...'
     f = open('./data/lvl4_Stuart_combinedPvalue_Aft_%s.txt' % aft_num, 'r')
@@ -87,11 +54,10 @@ if __name__ == '__main__':
     gene_dct = OrderedDict({})
     for i, line in enumerate(f):
         line = line.split()
-        print i
-        gene = genes[i-1]
+        gene = genes[i - 1]
         if i == 0:
             # Take out the lvl4_ prefix
-            drugs = [raw_string[5:] for raw_string in line]
+            drugs = [raw_string[len('lvl4_'):] for raw_string in line]
         elif gene == '-666':
             continue
         else:
@@ -125,7 +91,6 @@ if __name__ == '__main__':
         drug, cell_line = raw_string[0], raw_string[1]
 
         ### Mayo data translation.
-        # drug, z_scores = trans_dct[drug] + '_' + cell_line, row[1:]
         drug, z_scores = drug + '_' + cell_line, row[1:]
 
         # Convert to floats again because np.transpose() changes to strings.
@@ -168,6 +133,7 @@ if __name__ == '__main__':
             corr_not_path = len(corr_genes.difference(path_genes))
             path_not_corr = len(path_genes.difference(corr_genes))
             neither = total_num_genes - len(corr_genes.union(path_genes))
+            # Compute Fisher's test.
             o_r, p_value = fisher_exact([[corr_and_path, corr_not_path],
                 [path_not_corr, neither]])
             if p_value < LOW_P_THRESHOLD:
