@@ -39,7 +39,7 @@ principal components.
 ______________________________________
 Compare the previous drug-pathway ranking methods (PCA, L1 linear regression)
 with LINCS as a baseline.
->>> python compare_methods_with_lincs.py AFT_NUM pca/l1.exp
+>>> python compare_methods_with_lincs.py pca/l1/exp
 Outputs file, compare_lincs_and_METHOD.txt, depending on the method of choice. 
 Uses Fisher's method to find how similar each method's top pathways are with
 LINC's top pathways.

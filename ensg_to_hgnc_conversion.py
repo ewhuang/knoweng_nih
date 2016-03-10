@@ -100,6 +100,5 @@ if __name__ == '__main__':
             cell_lines = [cell_lines[i] for i in ge_indices]
 
             out.write(gene_id + '\t' + '\t'.join(cell_lines) + '\n')
-            exit()
     f.close()
     out.close()

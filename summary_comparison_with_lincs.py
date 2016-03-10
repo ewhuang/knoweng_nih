@@ -104,5 +104,5 @@ if __name__ == '__main__':
                 for i, val in enumerate(embedding_table):
                     if val > exp_table[i]:
                         num_better_than_expression += 1
-                if num_better_than_expression > 8:
+                if num_better_than_expression >= 8:
                     print embedding_fname
