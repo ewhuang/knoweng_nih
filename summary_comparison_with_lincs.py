@@ -4,13 +4,14 @@ from collections import OrderedDict
 
 ### This script summarizes the compare_lincs_Aft_NUM_and_method_hgnc.txt files
 ### with the following table format:
-### threshold/fisher-p  0.001 0.005 0.01 0.05 0.1
+### method_p/fisher-p  0.001 0.005 0.01 0.05 0.1
 ### 0.001
 ### 0.005
 ### ...
 
-fisher_p_range = [0.001, 0.005, 0.01, 0.05, 0.1]
-threshold_range = [0.0001, 0.001, 0.01, 0.05]
+# method_p_range = [0.0001, 0.001, 0.01, 0.05]
+p_thresh_range = [0.001, 0.005, 0.01, 0.05, 0.1]
+COMPARISON_P_THRESH = 0.01
 
 def summarize_file_and_write(in_filename):
     f = open(in_filename, 'r')
@@ -20,24 +21,23 @@ def summarize_file_and_write(in_filename):
         if i == 0:
             continue
         line = line.split()
-        threshold, fisher_p = float(line[0]), float(line[-1])
-        for fisher_p_thresh in fisher_p_range:
-            if fisher_p < fisher_p_thresh:
-                if (threshold, fisher_p_thresh) in table_dct:
-                    table_dct[(threshold, fisher_p_thresh)] += 1
-                else:
-                    table_dct[(threshold, fisher_p_thresh)] = 1
+        method_p, lincs_p, comparison_p = float(line[0]), float(line[1]), float(line[-1])
+        if comparison_p < COMPARISON_P_THRESH:
+            if (method_p, lincs_p) in table_dct:
+                table_dct[(method_p, lincs_p)] += 1
+            else:
+                table_dct[(method_p, lincs_p)] = 1
     f.close()
 
     out = open(in_filename[:10] + 'summ_' + in_filename[10:], 'w')
-    out.write('\t' + '\t'.join(map(str, fisher_p_range)) + '\n')
-    for threshold in threshold_range:
-        out.write(str(threshold))
-        for fisher_p in fisher_p_range:
-            if (threshold, fisher_p) not in table_dct:
+    out.write('\t' + '\t'.join(map(str, p_thresh_range)) + '\n')
+    for method_p in p_thresh_range:
+        out.write(str(method_p))
+        for lincs_p in p_thresh_range:
+            if (method_p, lincs_p) not in table_dct:
                 out.write('\t0')
             else:
-                out.write('\t%d' % table_dct[(threshold, fisher_p)])
+                out.write('\t%d' % table_dct[(method_p, lincs_p)])
         out.write('\n')
     out.close()
 
@@ -66,8 +66,9 @@ if __name__ == '__main__':
                 summarize_file_and_write(embedding_fname)
 
     # L1 summaries.
+    print 'Currently not comparing L1...'
     l1_fname = base + 'l1_hgnc.txt'
-    summarize_file_and_write(l1_fname)
+    # summarize_file_and_write(l1_fname)
 
     # Compare the expression summaries with embedding summaries.
     exp_file = open('./results/summ_compare_lincs_Aft_3_and_exp_hgnc.txt', 'r')
@@ -105,4 +106,4 @@ if __name__ == '__main__':
                     if val > exp_table[i]:
                         num_better_than_expression += 1
                 if num_better_than_expression >= 8:
-                    print embedding_fname
+                    print embedding_fname[10:], num_better_than_expression

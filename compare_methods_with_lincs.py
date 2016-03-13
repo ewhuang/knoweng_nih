@@ -13,6 +13,7 @@ import fisher_test
 ### test on these intersections, differentiating between cell lines and drugs.
 
 AFT_NUM = 3
+p_thresh_range = [0.001, 0.005, 0.01, 0.05, 0.1]
 
 # Different aggregation functions.
 def sum_log_p_values(p_val_lst):
@@ -24,12 +25,12 @@ def sum_log_p_values(p_val_lst):
 def min_p_exp(p_val_lst):
     return 1 - math.pow((1 - min(p_val_lst)), len(p_val_lst))
 
-def compare_methods(AFT_NUM, method, in_filename, out_filename):
+def compare_methods(lincs_drug_path_dct, method, in_filename, out_filename):
     out = open(out_filename, 'w')
-    out.write('p-value\tdrug\tinter\tlincs\t%s' % method)
+    out.write('method_p\tlincs_p\tdrug\tinter\tlincs\t%s' % method)
     out.write('\tneither\to_r\tfish-p\n')
     # Results Processing
-    for p_thresh in [0.0001, 0.001, 0.01, 0.05]:
+    for method_p_thresh in p_thresh_range:
         pathways = set([])
 
         # If the method is embedding, get the number of pathways per drug that
@@ -50,7 +51,7 @@ def compare_methods(AFT_NUM, method, in_filename, out_filename):
 
                 # If a Fisher's p-value is below the threshold, add it to the
                 # dictionary.
-                if float(score) <= p_thresh:
+                if float(score) <= method_p_thresh:
                     if drug not in exp_paths_per_drug:
                         exp_paths_per_drug[drug] = 1
                     else:
@@ -78,7 +79,7 @@ def compare_methods(AFT_NUM, method, in_filename, out_filename):
             # These methods are the ones that need expression to know how many
             # pathways to use for each drug.
             non_exp = ['ppi', 'l1', 'genetic', 'literome', 'sequence']
-            if method not in non_exp and float(score) <= p_thresh:
+            if method not in non_exp and float(score) <= method_p_thresh:
                 if drug not in res_drug_dct:
                     res_drug_dct[drug] = set([path])
                 else:
@@ -98,55 +99,34 @@ def compare_methods(AFT_NUM, method, in_filename, out_filename):
                         res_drug_dct[drug].add(path)
         results_file.close()
 
-        # print 'Extracting level 4 LINCS top pathways...'
-        f = open('./results/top_pathways_lincs_Aft_%s_hgnc.txt' % AFT_NUM, 'r')
-        lincs_drug_path_dct = {}
-        for i, line in enumerate(f):
-            # Skip header lines.
-            if i < 2:
-                continue
+        for lincs_p_thresh in p_thresh_range:
 
-            drug, cell_line, path, score = line.strip().split('\t')[:4]
+            lincs_drug_dct = {}
+            for (drug, path) in lincs_drug_path_dct:
+                if drug not in res_drug_dct:
+                    continue
 
-            if drug not in res_drug_dct:
-                continue
+                if lincs_drug_path_dct[(drug, path)] <= lincs_p_thresh:
+                    if drug not in lincs_drug_dct:
+                        lincs_drug_dct[drug] = set([path])
+                    else:
+                        lincs_drug_dct[drug].add(path)
 
-            pathways.add(path)
-            score = float(score)
+            for drug in lincs_drug_dct:
+                lincs_below_p = lincs_drug_dct[drug]
+                res_below_p = res_drug_dct[drug]
+                lincs_and_res = len(lincs_below_p.intersection(res_below_p))
+                lincs_not_res = len(lincs_below_p.difference(res_below_p))
+                res_not_lincs = len(res_below_p.difference(lincs_below_p))
+                neither = len(pathways) - len(lincs_below_p.union(res_below_p))
 
-            if (drug, path) not in lincs_drug_path_dct:
-                lincs_drug_path_dct[(drug, path)] = [score]
-            else:
-                lincs_drug_path_dct[(drug, path)] += [score]
-        f.close()
+                f_table = [[lincs_and_res, lincs_not_res], [res_not_lincs, neither]]
+                ft = fisher_test.FishersExactTest(f_table)
+                p_val = ft.two_tail_p()
 
-        lincs_drug_dct = {}
-        # Aggregate the p-values across cell lines for each drug-pathway pair.          
-        for (drug, path) in lincs_drug_path_dct:
-            p_val_lst = lincs_drug_path_dct[(drug, path)]
-            # Change the function for other aggregation functions.
-            drug_path_p_val = min_p_exp(p_val_lst)
-            if drug_path_p_val <= p_thresh:
-                if drug not in lincs_drug_dct:
-                    lincs_drug_dct[drug] = set([path])
-                else:
-                    lincs_drug_dct[drug].add(path)
-
-        for drug in lincs_drug_dct:
-            lincs_below_p = lincs_drug_dct[drug]
-            res_below_p = res_drug_dct[drug]
-            lincs_and_res = len(lincs_below_p.intersection(res_below_p))
-            lincs_not_res = len(lincs_below_p.difference(res_below_p))
-            res_not_lincs = len(res_below_p.difference(lincs_below_p))
-            neither = len(pathways) - len(lincs_below_p.union(res_below_p))
-
-            f_table = [[lincs_and_res, lincs_not_res], [res_not_lincs, neither]]
-            ft = fisher_test.FishersExactTest(f_table)
-            p_val = ft.two_tail_p()
-
-            out.write('%f\t%s\t%d\t%d\t' % (p_thresh, drug, lincs_and_res,
-                lincs_not_res))
-            out.write('%d\t%d\t%g\n' % (res_not_lincs, neither, p_val))
+                out.write('%f\t%f\t%s\t%d\t%d\t' % (method_p_thresh, lincs_p_thresh, drug, lincs_and_res,
+                    lincs_not_res))
+                out.write('%d\t%d\t%g\n' % (res_not_lincs, neither, p_val))
     out.close()
 
 if __name__ == '__main__':
@@ -156,6 +136,27 @@ if __name__ == '__main__':
     method = sys.argv[1]
     if len(sys.argv) == 3:
         top_k = int(sys.argv[2])
+
+    # print 'Extracting level 4 LINCS top pathways...'
+    f = open('./results/top_pathways_lincs_Aft_%s_hgnc.txt' % AFT_NUM, 'r')
+    lincs_drug_path_dct = {}
+    for i, line in enumerate(f):
+        # Skip header lines.
+        if i < 2:
+            continue
+        drug, cell_line, path, score = line.strip().split('\t')[:4]
+        score = float(score)
+        if (drug, path) not in lincs_drug_path_dct:
+            lincs_drug_path_dct[(drug, path)] = [score]
+        else:
+            lincs_drug_path_dct[(drug, path)] += [score]
+    f.close()
+    # Aggregate p-values by cell lines.
+    for (drug, path) in lincs_drug_path_dct:
+        p_val_lst = lincs_drug_path_dct[(drug, path)]
+        # Change the function for other aggregation functions.
+        lincs_drug_path_dct[(drug, path)] = min_p_exp(p_val_lst)
+
 
     assert (method in ['pca', 'exp', 'ppi', 'l1', 'genetic',
         'literome', 'sequence'])
@@ -170,8 +171,8 @@ if __name__ == '__main__':
                 extension = '%s_0.8.%s' % (dim, suffix)
                 in_filename = './results/embedding/%s_top_pathways_%s_top_%d.txt' % (method, extension, top_k)
                 out_filename = './results/compare_lincs_Aft_%s_and_%s_%s_top_%d_hgnc.txt' % (AFT_NUM, method, extension, top_k)
-                compare_methods(AFT_NUM, method, in_filename, out_filename)
+                compare_methods(lincs_drug_path_dct, method, in_filename, out_filename)
     else:
         in_filename = './results/top_pathways_%s_hgnc.txt' % method
         out_filename = './results/compare_lincs_Aft_%s_and_%s_hgnc.txt' % (AFT_NUM, method)
-        compare_methods(AFT_NUM, method, in_filename, out_filename)
+        compare_methods(lincs_drug_path_dct, method, in_filename, out_filename)
