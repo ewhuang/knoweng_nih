@@ -11,7 +11,7 @@ from collections import OrderedDict
 
 # The maximum p-value to for Pearson's between drug response and gene expression
 # to allow to be a significantly correlated gene for a drug.
-PEARSON_P_THRESH = 0.05
+PEARSON_P_THRESH = 0.005
 MAX_GENES_PER_DRUG = 250
 FISHER_P_THRESH = 0.0001
 
@@ -62,7 +62,7 @@ def write_genes_pathways(data_dct, method):
     progress_counter = 0
     num_drugs = float(len(drug_resp_dct))
     for drug in drug_resp_dct:
-        print 'Progress: %f%%' % (progress_counter / num_drugs)
+        print 'Progress: %f%%' % (progress_counter / num_drugs * 100)
         drug_top_correlated_genes = {}
         # These are lists of drug responses for the drug.
         drug_resp = drug_resp_dct[drug]
@@ -87,6 +87,8 @@ def write_genes_pathways(data_dct, method):
         # These are the top correlated genes for the drug.
         top_genes = sorted(drug_top_correlated_genes.items(),
             key=operator.itemgetter(1))[:MAX_GENES_PER_DRUG]
+        if len(top_genes) < 250:
+            print drug, len(top_genes)
         # Get just the genes now, without the corresponding scores.
         corr_genes = set([gene for gene, pcc in top_genes])
         # Compute the top pathways for the drug with Fisher's test.

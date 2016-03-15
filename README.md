@@ -9,7 +9,7 @@ scripts meant to run on Mayo clinic data.
 
 ______________________________________
 Finds the top pathways for each drug, cell-line pair from LINCS dataset.
->>> python top_pathways_lincs.py AFT_NUM
+>>> python lincs_top_pathways.py AFT_NUM
 AFT_NUM is the suffix for various p-values of LINCS z-score files.
 Reads in the LINCS data for level 4, and then finds the top pathway, drug
 and cell-line pairs by using Fisher's hypergeometric test. The top genes for
@@ -23,7 +23,7 @@ data.
 
 ______________________________________
 Finds top pathways for the gene expression data.
->>> python top_pathways_mut_exp.py
+>>> python expression_top_pathways.py
 Uses Pearson to find the correlation between gene expression and drug response.
 Outputs two files, top_pathways_exp.txt and top_pathways_mut.txt.
 They show the top drug-pathway pairs through Fisher's test.
@@ -48,6 +48,7 @@ the top of the script.
 
 ______________________________________
 Run embedding_top_pathways.py to find the top pathways for the embedding method.
+Requires an updated run of top_pathways_mut_exp.py.
 
 >>> python embedding_top_pathways.py METHOD top_k
 
@@ -60,3 +61,12 @@ Then
 Then
 >>> summary_comparison_with_lincs.py
 This script computes the 4x4 summary table for all of our methods.
+
+To get the inverse rankings of the top pathways.
+$ python ivnerse_ranking_top_pathways.py
+
+
+_____VARIOUS SCRIPTS_____
+$ python kegg_lincs_intersection.py
+Finds how many pathways are in common between KEGG pathway genes and LINCS
+genes.
