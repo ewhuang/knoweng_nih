@@ -62,7 +62,7 @@ def find_top_pathways(network, top_k):
 
     # Check that each drug has exactly top_k number of genes.
     for drug in drug_top_genes_dct:
-        assert len(drug_top_genes_dct[drug]) == top_k
+        assert len(drug_top_genes_dct[drug]) <= top_k
 
     # Loop through the files.
     if network == 'ppi':
