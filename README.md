@@ -59,7 +59,7 @@ Then
 >>> python compare_methods_with_lincs.py ppi/genetic/literome/sequence TOP_K
 
 Then
->>> summary_comparison_with_lincs.py
+>>> summary_comparison_with_lincs.py TOP_K
 This script computes the 4x4 summary table for all of our methods.
 
 To get the inverse rankings of the top pathways.
