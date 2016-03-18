@@ -5,8 +5,8 @@ import math
 import random
 import sys
 
-### This script randomly samples top_k genes for each drug, and performs a
-### Fisher's test between those genes and LINCS. It performs this 1,000 times.
+### This script randomly samples pathways for each drug, and performs a
+### Fisher's test between those genes and LINCS. It does this 1,000 times.
 
 def min_p_exp(p_val_lst):
     return 1 - math.pow((1 - min(p_val_lst)), len(p_val_lst))
