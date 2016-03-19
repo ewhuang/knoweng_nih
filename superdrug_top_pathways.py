@@ -1,80 +1,65 @@
 ### Author: Edward Huang
 
-# from sklearn.decomposition import PCA
-from collections import OrderedDict
+import fisher_test
+import file_operations
+import operator
+import sys
 
-### This script finds the superdrug by PCA's first principal component, and 
-### runs Fisher's test between its top 250 genes and each pathway. Makes a file
-### with the p-values.
+### This script takes the most principal component computed for the Pearson
+### p-values (the superdrug), takes the top_k genes with lowest values from
+### the superdrug, and then computes a Fisher's test between the genes and each
+### pathway, and writes out the pathway p-values to file.
 
 if __name__ == '__main__':
-    # Extract the NCI pathway data.
-    path_file = open('./data/nci_pathway_hgnc.txt', 'r')
-    nci_path_dct = {}
-    # Set of all genes that appear in all NCI pathways.
-    nci_genes = set([])
-    for line in path_file:
-        line = line.strip().split('\t')
-        assert len(line) == 2
-        path_name, path_gene = line
-        nci_genes.add(path_gene)
-        if path_name in nci_path_dct:
-            nci_path_dct[path_name] += [path_gene]
-        else:
-            nci_path_dct[path_name] = [path_gene]
-    path_file.close()
+    if (len(sys.argv) != 3):
+        print "Usage: " + sys.argv[0] + " correlation/p top_k"
+        exit(1)
+    value_type = sys.argv[1]
+    top_k = int(sys.argv[2])
 
-    # Get the drug responses from the spreadsheet file.
-    # Keys are drugs, values are lists of drug responses across all patients.
-    drug_resp_dct = OrderedDict({})
-    resp_file = open('./data/auc_hgnc.tsv', 'r')
-    for i, line in enumerate(resp_file):
-        # Header line contains patient ID's.
-        if i == 0:
-            drug_response_patients = line.split()[1:]
-            continue
-        # Each row is one drug's performance on each patient.
-        line = line.split()
-        drug, resp_line = line[0], line[1:]
-        assert len(resp_line) == len(drug_response_patients)
-        assert 'BRD-' in drug
-        # Convert 'NA' strings to None values.
-        resp_line = [None if resp == 'NA' else float(resp) for resp in resp_line]
-        drug_resp_dct[drug] = resp_line
-    resp_file.close()
+    superdrug_gene_vector = []
+    f = open('./results/superdrug_gene_%s_values.txt' % value_type, 'r')
+    for line in f:
+        superdrug_gene_vector += [float(line.strip())]
+    f.close()
+    # Get the smallest values in the most principal component.
+    if value_type == 'p':
+        sorted_gene_vector = sorted(superdrug_gene_vector)[:top_k]
+    else:
+        sorted_gene_vector = sorted(superdrug_gene_vector,
+            reverse=True)[:top_k]
+    # Get the indices of the component corresponding to these indices.
+    super_gene_indices = [i for i, e in enumerate(superdrug_gene_vector) if e
+        in sorted_gene_vector]
+    
+    expression_genes = file_operations.get_exp_dct().keys()
+    # Get the gene names corresponding to the smallest values.
+    super_genes = set([expression_genes[i] for i in super_gene_indices])
 
-    # Getting gene expression vectors.
-    exp_dct = OrderedDict({})
-    exp_file = open('./data/gene_expression_hgnc.tsv', 'r')
-    for i, line in enumerate(exp_file):
-        # Header row contains patient ID's.
-        if i == 0:
-            expression_patients = line.split()[1:]
-            assert drug_response_patients == expression_patients
-            continue
-        line = line.split()
-        gene, exp_line = line[0], line[1:]
-        assert len(exp_line) == len(expression_patients)
-        exp_dct[gene] = map(float, exp_line)
-    exp_file.close()
+    # Get the NCI pathway dictionary.
+    nci_path_dct, nci_genes = file_operations.get_nci_path_dct()
 
-    num_drugs = float(len(drug_resp_dct))
-    for drug in drug_resp_dct:
-        drug_top_correlated_genes = {}
-        # These are lists of drug responses for the drug.
-        drug_resp = drug_resp_dct[drug]
-        # Indices of None values in our drug response table.
-        NA_i = [i for i, e in enumerate(drug_resp) if e == None]
-        # Get rid of None elements.
-        drug_resp = [e for i, e in enumerate(drug_resp) if i not in NA_i]
-        if len(drug_resp) == 0:
-            assert [ele == None for ele in drug_resp_dct[drug]]
-            continue
-        # Finding the most correlated genes for the drug.
-        for gene in data_dct:
-            # Gene data is either gene expression values, or mutation counts.
-            gene_data = data_dct[gene]
-            # Remove indices for elements that were None in drug response.
-            gene_data = [e for i, e in enumerate(gene_data) if i not in NA_i]
-            # Find the pearson coefficient between these two lists.
-            pcc, p_value = pearsonr(drug_resp, gene_data)
+    gene_universe = nci_genes.union(expression_genes)
+
+    pathway_p_values = {}
+    # Compute the top pathways for the superdrug with Fisher's test.
+    for path in nci_path_dct:
+        path_genes = set(nci_path_dct[path])
+        sup_and_path = len(super_genes.intersection(path_genes))
+        sup_not_path = len(super_genes.difference(path_genes))
+        path_not_sup = len(path_genes.difference(super_genes))
+        neither = len(gene_universe) - len(super_genes.union(path_genes))
+        assert neither == len((gene_universe.difference(
+            super_genes)).difference(path_genes))
+        
+        f_table = [[sup_and_path, sup_not_path], [path_not_sup, neither]]
+        ft = fisher_test.FishersExactTest(f_table)
+        pathway_p_values[path] = ft.two_tail_p()
+
+    sorted_paths = sorted(pathway_p_values.items(), key=operator.itemgetter(1))
+
+    # Write out to file.
+    out = open('./results/superdrug_pathway_p_values.txt', 'w')
+    for path, p_val in sorted_paths:
+        out.write('%s\t%g\n' % (path, p_val))
+    out.close()

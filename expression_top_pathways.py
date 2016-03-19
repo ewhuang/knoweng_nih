@@ -1,9 +1,9 @@
 ### Author: Edward Huang
 
+import file_operations
 from scipy.stats.stats import pearsonr
 from scipy.stats import fisher_exact
 import operator
-from collections import OrderedDict
 
 ### Find top genes from gene expression and mutation data sets.
 ### Uses Fisher's test to then use the gene rankings to find most similar
@@ -16,39 +16,9 @@ MAX_GENES_PER_DRUG = 250
 FISHER_P_THRESH = 0.0001
 
 # Extract the NCI pathway data.
-path_file = open('./data/nci_pathway_hgnc.txt', 'r')
-nci_path_dct = {}
-# Set of all genes that appear in all NCI pathways.
-nci_genes = set([])
-for line in path_file:
-    line = line.strip().split('\t')
-    assert len(line) == 2
-    path_name, path_gene = line
-    nci_genes.add(path_gene)
-    if path_name in nci_path_dct:
-        nci_path_dct[path_name] += [path_gene]
-    else:
-        nci_path_dct[path_name] = [path_gene]
-path_file.close()
-
-# Get the drug responses from the spreadsheet file.
-# Keys are drugs, values are lists of drug responses across all patients.
-drug_resp_dct = OrderedDict({})
-resp_file = open('./data/auc_hgnc.tsv', 'r')
-for i, line in enumerate(resp_file):
-    # Header line contains patient ID's.
-    if i == 0:
-        drug_response_patients = line.split()[1:]
-        continue
-    # Each row is one drug's performance on each patient.
-    line = line.split()
-    drug, resp_line = line[0], line[1:]
-    assert len(resp_line) == len(drug_response_patients)
-    assert 'BRD-' in drug
-    # Convert 'NA' strings to None values.
-    resp_line = [None if resp == 'NA' else float(resp) for resp in resp_line]
-    drug_resp_dct[drug] = resp_line
-resp_file.close()
+nci_path_dct, nci_genes = file_operations.get_nci_path_dct()
+# Get the drug response dictionary.
+drug_resp_dct = file_operations.get_drug_resp_dct()
 
 def write_genes_pathways(data_dct, method):
     gene_drug_correlations = {}
@@ -133,22 +103,10 @@ def write_genes_pathways(data_dct, method):
 
 if __name__ == '__main__':
     # Keys are genes, values are lists of gene expression across all patients.
-    exp_dct = OrderedDict({})
     # mut_dct = OrderedDict({})
 
-    print 'Extracting the gene expression vectors...'
-    exp_file = open('./data/gene_expression_hgnc.tsv', 'r')
-    for i, line in enumerate(exp_file):
-        # Header row contains patient ID's.
-        if i == 0:
-            expression_patients = line.split()[1:]
-            assert drug_response_patients == expression_patients
-            continue
-        line = line.split()
-        gene, exp_line = line[0], line[1:]
-        assert len(exp_line) == len(expression_patients)
-        exp_dct[gene] = map(float, exp_line)
-    exp_file.close()
+    # Getting gene expression dictionary.
+    exp_dct = file_operations.get_exp_dct()
 
     # print 'Extracting the mutation vectors...'
     # mut_file = open('./data/gene2SNPu50SumParse.txt', 'r')

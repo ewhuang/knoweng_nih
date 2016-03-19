@@ -1,5 +1,6 @@
 ### Author: Edward Huang
 
+import file_operations
 import fisher_test
 import math
 import random
@@ -40,20 +41,7 @@ if __name__ == '__main__':
     f.close()
 
     # Extract the NCI pathway data.
-    path_file = open('./data/nci_pathway_hgnc.txt', 'r')
-    nci_path_dct = {}
-    # Set of all genes that appear in all NCI pathways.
-    nci_genes = set([])
-    for line in path_file:
-        line = line.strip().split('\t')
-        assert len(line) == 2
-        path_name, path_gene = line
-        nci_genes.add(path_gene)
-        if path_name in nci_path_dct:
-            nci_path_dct[path_name] += [path_gene]
-        else:
-            nci_path_dct[path_name] = [path_gene]
-    path_file.close()
+    nci_path_dct, nci_genes = file_operations.get_nci_path_dct()
 
     # For threshold 0.1, we sample pathways for each drug. The number of
     # pathways corresponds to the number of pathways below the threshold for
