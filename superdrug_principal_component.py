@@ -39,7 +39,6 @@ if __name__ == '__main__':
             gene_exp = [e for i, e in enumerate(gene_exp) if i not in NA_i]
             # Find the pearson coefficient between these two lists.
             pcc, p_value = pearsonr(drug_resp, gene_exp)
-            # drug_gene_p_values += [p_value]
             drug_gene_p_values += [pcc]
         pca_matrix += [drug_gene_p_values]
 

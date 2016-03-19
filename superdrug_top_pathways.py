@@ -11,23 +11,19 @@ import sys
 ### pathway, and writes out the pathway p-values to file.
 
 if __name__ == '__main__':
-    if (len(sys.argv) != 3):
-        print "Usage: " + sys.argv[0] + " correlation/p top_k"
+    if (len(sys.argv) != 2):
+        print "Usage: " + sys.argv[0] + " top_k"
         exit(1)
-    value_type = sys.argv[1]
-    top_k = int(sys.argv[2])
+    top_k = int(sys.argv[1])
 
     superdrug_gene_vector = []
-    f = open('./results/superdrug_gene_%s_values.txt' % value_type, 'r')
+    f = open('./results/superdrug_gene_correlation_values.txt', 'r')
     for line in f:
         superdrug_gene_vector += [float(line.strip())]
     f.close()
-    # Get the smallest values in the most principal component.
-    if value_type == 'p':
-        sorted_gene_vector = sorted(superdrug_gene_vector)[:top_k]
-    else:
-        sorted_gene_vector = sorted(superdrug_gene_vector,
-            reverse=True)[:top_k]
+    # Get the largest values in the most principal component.
+    sorted_gene_vector = sorted(superdrug_gene_vector,
+        reverse=True)[:top_k]
     # Get the indices of the component corresponding to these indices.
     super_gene_indices = [i for i, e in enumerate(superdrug_gene_vector) if e
         in sorted_gene_vector]

@@ -10,9 +10,7 @@ import sys
 ### 0.005
 ### ...
 
-# method_p_range = [0.0001, 0.001, 0.01, 0.05]
 p_thresh_range = [0.001, 0.005, 0.01, 0.05, 0.1]
-# comparison_p_thresh = 0.01
 main_folder = './results/'
 subfolder = 'comparison_summary_'
 

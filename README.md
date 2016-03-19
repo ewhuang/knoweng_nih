@@ -73,6 +73,21 @@ this threshold in the range of [0.001, 0.005, 0.01, 0.05, 0.1]. Each script
 runs 100 times, so the argument is the output file name. We can read the 10
 outputs to see 1,000 random runs, and then average them all.
 
+
+______________SUPERDRUG______________
+Superdrug - finding the drug that is most representative of all drugs to find
+genes that have good drug response for all drugs.
+
+$ python superdrug_principal_component.py
+
+Outputs a file containing the most principal component vector, with length
+equal to the number of genes in our data.
+
+$ python superdrug_top_pathways.py TOP_K
+
+Outputs a file containing the pathway p-values when compared to the TOP_K genes
+of the superdrug.
+
 _____VARIOUS SCRIPTS_____
 $ python kegg_lincs_intersection.py
 Finds how many pathways are in common between KEGG pathway genes and LINCS
