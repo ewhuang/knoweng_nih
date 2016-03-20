@@ -15,7 +15,7 @@ main_folder = './results/'
 subfolder = 'comparison_summary_'
 
 def summarize_file_and_write(in_filename, comparison_p_thresh):
-    f = open(main_folder + in_filename, 'r')
+    f = open(main_folder + 'lincs_comparison_files/' + in_filename, 'r')
     table_dct = OrderedDict({})
     for i, line in enumerate(f):
         # Skip the header line.
@@ -51,7 +51,7 @@ def summarize_file_and_write(in_filename, comparison_p_thresh):
 
 if __name__ == '__main__':
     if (len(sys.argv) < 2):
-        print "Usage: " + sys.argv[0] +" pca/exp/ppi/l1/genetic/literome/sequence TOP_K"
+        print "Usage: " + sys.argv[0] +" TOP_K"
         exit(1)
     top_k = int(sys.argv[1])
 

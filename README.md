@@ -55,8 +55,24 @@ Requires an updated run of top_pathways_mut_exp.py.
 Same format as the other top pathways. However, we can tune the top k pathways
 to keep.
 
+______________SUPERDRUG______________
+Superdrug - finding the drug that is most representative of all drugs to find
+genes that have good drug response for all drugs.
+
+$ python superdrug_principal_component.py
+
+Outputs a file containing the most principal component vector, with length
+equal to the number of genes in our data.
+
+$ python superdrug_top_pathways.py TOP_K
+
+Outputs a file containing the pathway p-values when compared to the TOP_K genes
+of the superdrug.
+
 Then 
->>> python compare_methods_with_lincs.py ppi/genetic/literome/sequence TOP_K
+$ python compare_methods_with_lincs.py ppi/genetic/literome/sequence TOP_K
+This removes pathways below a threshold for the superdrug. We want to remove
+the pathways that are too similar to too many drugs.
 
 Then
 >>> summary_comparison_with_lincs.py TOP_K
@@ -72,21 +88,6 @@ the number of pathway-drug pairs for expression below a certain threshold, with
 this threshold in the range of [0.001, 0.005, 0.01, 0.05, 0.1]. Each script
 runs 100 times, so the argument is the output file name. We can read the 10
 outputs to see 1,000 random runs, and then average them all.
-
-
-______________SUPERDRUG______________
-Superdrug - finding the drug that is most representative of all drugs to find
-genes that have good drug response for all drugs.
-
-$ python superdrug_principal_component.py
-
-Outputs a file containing the most principal component vector, with length
-equal to the number of genes in our data.
-
-$ python superdrug_top_pathways.py TOP_K
-
-Outputs a file containing the pathway p-values when compared to the TOP_K genes
-of the superdrug.
 
 _____VARIOUS SCRIPTS_____
 $ python kegg_lincs_intersection.py

@@ -1,8 +1,7 @@
 ### Author: Edward Huang
 
-# from scipy.stats import fisher_exact, combine_pvalues
-import math
 import sys
+import file_operations
 import fisher_test
 
 ### Takes the drug-pathway scores from either PCA or linear regression L1
@@ -12,100 +11,85 @@ import fisher_test
 ### have p-values below 0.0001, 0.001, 0.01, and 0.05. Computes the Fisher's
 ### test on these intersections, differentiating between cell lines and drugs.
 
-AFT_NUM = 3
+embedding_methods = ['ppi', 'genetic', 'literome', 'sequence']
 p_thresh_range = [0.001, 0.005, 0.01, 0.05, 0.1]
 
-# Different aggregation functions.
-def sum_log_p_values(p_val_lst):
-    return sum([math.log(p_val, 10) for p_val in p_val_lst])
+# Superdrug pathway p-values.
+sppv = file_operations.get_superdrug_pathway_p_values()
+lincs_drug_path_dct = file_operations.get_lincs_drug_path_dct()
+pathways = set([])
 
-# def fishers_method(p_val_lst):
-#     return combine_pvalues(p_val_lst, method='fisher')[1]
+# Get the top pathways for each drug in the target method. Returns a dictionary
+# where keys are drugs, and values are sets of highest rated pathways.
+def get_top_pathways(in_filename, method_p_thresh):
+    exp_fname = './results/top_pathways_exp_hgnc.txt'
 
-def min_p_exp(p_val_lst):
-    return 1 - math.pow((1 - min(p_val_lst)), len(p_val_lst))
+    # Read in the file, and record the pathways below the threshold for each
+    # drug.
+    exp_path_dct = {}
+    exp_file = open(exp_fname, 'r')
+    for i, line in enumerate(exp_file):
+        if i < 2:
+            continue
+        drug, path, score = line.strip().split('\t')[:3]
+        pathways.add(path)
+        if score == '[]':
+            continue
+        # Don't add pathways if they are significant for the superdrug, or if
+        # it's insignificant for the current drug.
+        if sppv[path] <= method_p_thresh or float(score) > method_p_thresh:
+            continue
+        if drug not in exp_path_dct:
+            exp_path_dct[drug] = set([path])
+        else:
+            exp_path_dct[drug].add(path)
+    exp_file.close()
+    if in_filename == exp_fname:
+        return exp_path_dct
 
-def compare_methods(lincs_drug_path_dct, method, in_filename, out_filename):
+    # Initialize the method drug dictionary with the drgus from exp_path_dct.
+    method_drug_dct = {}
+    for drug in exp_path_dct:
+        method_drug_dct[drug] = set([])
+
+    assert (in_filename != exp_fname)
+    method_file = open(in_filename, 'r')
+    for i, line in enumerate(method_file):
+        if i < 2:
+            continue
+        drug, path, score = line.strip().split('\t')[:3]
+        pathways.add(path)
+        if score == '[]':
+            continue
+        # Don't add pathways if they are significant for the superdrug.
+        if sppv[path] <= method_p_thresh or drug not in exp_path_dct:
+            continue
+
+        if drug not in method_drug_dct:
+            method_drug_dct[drug] = set([path])
+        elif drug in method_drug_dct:
+            # Skip a path if we have reached the same number of paths as we have
+            # for the expression data.
+            if len(exp_path_dct[drug]) == len(method_drug_dct[drug]):
+                continue
+            method_drug_dct[drug].add(path)
+    method_file.close()
+    return method_drug_dct
+
+def compare_methods(method, in_filename, out_filename):
     out = open(out_filename, 'w')
     out.write('method_p\tlincs_p\tdrug\tinter\tlincs\t%s' % method)
     out.write('\tneither\to_r\tfish-p\n')
     # Results Processing
     for method_p_thresh in p_thresh_range:
-        pathways = set([])
-
-        # If the method is embedding, get the number of pathways per drug that
-        # meet the desired threshold from gene expression.
-        if method in ['ppi', 'l1', 'genetic', 'literome', 'sequence']:
-            f = open('./results/top_pathways_exp_hgnc.txt', 'r')
-            # We need to find out for each threshold, the number of pathways for
-            # each drug-pathway pair that are better than the threshld.
-            exp_paths_per_drug = {}
-            for i, line in enumerate(f):
-                # Skip header lines.
-                if i < 2:
-                    continue
-                drug, path, score = line.strip().split('\t')[:3]
-
-                if score == '[]':
-                    continue
-
-                # If a Fisher's p-value is below the threshold, add it to the
-                # dictionary.
-                if float(score) <= method_p_thresh:
-                    if drug not in exp_paths_per_drug:
-                        exp_paths_per_drug[drug] = 1
-                    else:
-                        exp_paths_per_drug[drug] += 1
-            f.close()
-
-        # Get the top pathways for each drug in our target method.
-        res_drug_dct = {}
-        results_file = open(in_filename, 'r')
-        for i, line in enumerate(results_file):
-            # Skip header lines.
-            if i < 2:
-                continue
-            drug, path, score = line.strip().split('\t')[:3]
-            
-            if score == '[]':
-                continue
-            
-            # Remove differentiation between 1st and 2nd principal components.
-            if method == 'pca':
-                path = path[:-2]            
-
-            pathways.add(path)
-
-            # These methods are the ones that need expression to know how many
-            # pathways to use for each drug.
-            non_exp = ['ppi', 'l1', 'genetic', 'literome', 'sequence']
-            if method not in non_exp and float(score) <= method_p_thresh:
-                if drug not in res_drug_dct:
-                    res_drug_dct[drug] = set([path])
-                else:
-                    res_drug_dct[drug].add(path)
-            elif method in non_exp:
-                # Skip drugs not in expression data.
-                if drug not in exp_paths_per_drug:
-                    continue
-                if drug not in res_drug_dct:
-                    res_drug_dct[drug] = set([path])
-                elif drug in res_drug_dct:
-                    # Skip the drug if we have reached the same number of paths
-                    # as we have for the expression data.
-                    if exp_paths_per_drug[drug] == len(res_drug_dct[drug]):
-                        continue
-                    else:
-                        res_drug_dct[drug].add(path)
-        results_file.close()
+        res_drug_dct = get_top_pathways(in_filename, method_p_thresh)
 
         for lincs_p_thresh in p_thresh_range:
-
             lincs_drug_dct = {}
             for (drug, path) in lincs_drug_path_dct:
+                pathways.add(path)
                 if drug not in res_drug_dct:
                     continue
-
                 if lincs_drug_path_dct[(drug, path)] <= lincs_p_thresh:
                     if drug not in lincs_drug_dct:
                         lincs_drug_dct[drug] = set([path])
@@ -120,59 +104,36 @@ def compare_methods(lincs_drug_path_dct, method, in_filename, out_filename):
                 res_not_lincs = len(res_below_p.difference(lincs_below_p))
                 neither = len(pathways) - len(lincs_below_p.union(res_below_p))
 
-                f_table = [[lincs_and_res, lincs_not_res], [res_not_lincs, neither]]
+                f_table = ([[lincs_and_res, lincs_not_res],
+                    [res_not_lincs, neither]])
                 ft = fisher_test.FishersExactTest(f_table)
                 p_val = ft.two_tail_p()
 
-                out.write('%f\t%f\t%s\t%d\t%d\t' % (method_p_thresh, lincs_p_thresh, drug, lincs_and_res,
-                    lincs_not_res))
+                out.write('%f\t%f\t%s\t%d\t%d\t' % (method_p_thresh,
+                    lincs_p_thresh, drug, lincs_and_res, lincs_not_res))
                 out.write('%d\t%d\t%g\n' % (res_not_lincs, neither, p_val))
     out.close()
 
 if __name__ == '__main__':
-    if (len(sys.argv) < 2):
-        print "Usage: " + sys.argv[0] + " pca/exp/ppi/l1/genetic/literome/sequence TOP_K"
+    if (len(sys.argv) < 3):
+        print "Usage: " + sys.argv[0] + " exp/ppi/genetic/literome/sequence TOP_K"
         exit(1)
     method = sys.argv[1]
-    if len(sys.argv) == 3:
-        top_k = int(sys.argv[2])
+    top_k = int(sys.argv[2])
 
-    # print 'Extracting level 4 LINCS top pathways...'
-    f = open('./results/top_pathways_lincs_Aft_%s_hgnc.txt' % AFT_NUM, 'r')
-    lincs_drug_path_dct = {}
-    for i, line in enumerate(f):
-        # Skip header lines.
-        if i < 2:
-            continue
-        drug, cell_line, path, score = line.strip().split('\t')[:4]
-        score = float(score)
-        if (drug, path) not in lincs_drug_path_dct:
-            lincs_drug_path_dct[(drug, path)] = [score]
-        else:
-            lincs_drug_path_dct[(drug, path)] += [score]
-    f.close()
-    # Aggregate p-values by cell lines.
-    for (drug, path) in lincs_drug_path_dct:
-        p_val_lst = lincs_drug_path_dct[(drug, path)]
-        # Change the function for other aggregation functions.
-        lincs_drug_path_dct[(drug, path)] = min_p_exp(p_val_lst)
+    assert (method in ['pca', 'exp', 'l1'] + embedding_methods)
 
-
-    assert (method in ['pca', 'exp', 'ppi', 'l1', 'genetic',
-        'literome', 'sequence'])
-
-    if method in ['ppi', 'genetic', 'literome', 'sequence']:
+    dimensions = map(str, [50, 100, 500])
+    if method in embedding_methods:
         if method == 'ppi':
-            dimensions = map(str, [50, 100, 500, 1000, 1500, 2000])
-        else:
-            dimensions = map(str, [50, 100, 500])
+            dimensions += map(str, [1000, 1500, 2000])
         for dim in dimensions:
             for suffix in ['U', 'US']:
                 extension = '%s_0.8.%s' % (dim, suffix)
                 in_filename = './results/embedding/%s_top_pathways_%s_top_%d.txt' % (method, extension, top_k)
-                out_filename = './results/compare_lincs_Aft_%s_and_%s_%s_top_%d_hgnc.txt' % (AFT_NUM, method, extension, top_k)
-                compare_methods(lincs_drug_path_dct, method, in_filename, out_filename)
-    else:
-        in_filename = './results/top_pathways_%s_hgnc.txt' % method
-        out_filename = './results/compare_lincs_Aft_%s_and_%s_hgnc.txt' % (AFT_NUM, method)
-        compare_methods(lincs_drug_path_dct, method, in_filename, out_filename)
+                out_filename = './results/lincs_comparison_files/compare_lincs_Aft_3_and_%s_%s_top_%d_hgnc.txt' % (method, extension, top_k)
+                compare_methods(method, in_filename, out_filename)
+    elif method == 'exp':
+        in_filename = './results/top_pathways_exp_hgnc.txt'
+        out_filename = './results/lincs_comparison_files/compare_lincs_Aft_3_and_exp_hgnc.txt'
+        compare_methods(method, in_filename, out_filename)

@@ -1,6 +1,7 @@
 ### Author: Edward Huang
 
 from collections import OrderedDict
+import math
 
 ### This file contains functions that parse the data files and return the 
 ### data objects that we work with in our scripts.
@@ -63,3 +64,40 @@ def get_exp_dct():
         exp_dct[gene] = map(float, exp_line)
     exp_file.close()
     return exp_dct
+
+# Get the top pathways for LINCS. Keys are (drug, pathway) tuples, and values
+# are floats of the p-values.
+def min_p_exp(p_val_lst):
+    return 1 - math.pow((1 - min(p_val_lst)), len(p_val_lst))
+def get_lincs_drug_path_dct():
+    # print 'Extracting level 4 LINCS top pathways...'
+    f = open('./results/top_pathways_lincs_Aft_3_hgnc.txt', 'r')
+    lincs_drug_path_dct = {}
+    for i, line in enumerate(f):
+        # Skip header lines.
+        if i < 2:
+            continue
+        drug, cell_line, path, score = line.strip().split('\t')[:4]
+        # Add the drug-pathway p-value to the dictionary.
+        score = float(score)
+        if (drug, path) in lincs_drug_path_dct:
+            lincs_drug_path_dct[(drug, path)] += [score]
+        else:
+            lincs_drug_path_dct[(drug, path)] = [score]
+    f.close()
+    # Aggregate p-values by cell lines.
+    for (drug, path) in lincs_drug_path_dct:
+        p_val_lst = lincs_drug_path_dct[(drug, path)]
+        # Change the function for other aggregation functions.
+        lincs_drug_path_dct[(drug, path)] = min_p_exp(p_val_lst)
+    return lincs_drug_path_dct
+
+# Get the superdrug's p-values for all the pathways.
+def get_superdrug_pathway_p_values():
+    superdrug_pathway_p_values = {}
+    f = open('./results/superdrug_pathway_p_values.txt', 'r')
+    for line in f:
+        pathway, p_value = line.strip().split('\t')
+        superdrug_pathway_p_values[pathway] = float(p_value)
+    f.close()
+    return superdrug_pathway_p_values

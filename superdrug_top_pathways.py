@@ -19,7 +19,7 @@ if __name__ == '__main__':
     superdrug_gene_vector = []
     f = open('./results/superdrug_gene_correlation_values.txt', 'r')
     for line in f:
-        superdrug_gene_vector += [float(line.strip())]
+        superdrug_gene_vector += [abs(float(line.strip()))]
     f.close()
     # Get the largest values in the most principal component.
     sorted_gene_vector = sorted(superdrug_gene_vector,

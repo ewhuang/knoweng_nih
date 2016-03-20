@@ -9,6 +9,8 @@ import sys
 ### This script randomly samples pathways for each drug, and performs a
 ### Fisher's test between those genes and LINCS. It does this 1,000 times.
 
+NUM_RUNS = 100
+
 def min_p_exp(p_val_lst):
     return 1 - math.pow((1 - min(p_val_lst)), len(p_val_lst))
 
@@ -74,10 +76,10 @@ if __name__ == '__main__':
         lincs_drug_path_dct[(drug, path)] = min_p_exp(p_val_lst)
 
     table_dct = {}
-    # Run script by 100 loops each.
-    for run in range(100):
-        # For each threshold, we get a subset of sampled pathways, and then compute
-        # Fisher's with LINCS top pathways.
+    # Run script by NUM_RUNS loops each.
+    for run in range(NUM_RUNS):
+        # For each threshold, we get a subset of sampled pathways, and then
+        # compute Fisher's with LINCS top pathways.
         for random_p_thresh in p_thresh_range:
             print random_p_thresh
             for drug in exp_paths_per_drug:
@@ -107,7 +109,8 @@ if __name__ == '__main__':
                         samp_not_lincs = len(sampled_paths.difference(lincs_below_p))
                         neither = len(pathways) - len(lincs_below_p.union(sampled_paths))
 
-                        f_table = [[lincs_and_samp, lincs_not_samp], [samp_not_lincs, neither]]
+                        f_table = [[lincs_and_samp, lincs_not_samp],
+                            [samp_not_lincs, neither]]
                         ft = fisher_test.FishersExactTest(f_table)
                         p_val = ft.two_tail_p()
                         if p_val <= 0.05:
