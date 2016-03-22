@@ -8,9 +8,6 @@ from sklearn.decomposition import PCA
 ### writes the component vector out to file.
 
 if __name__ == '__main__':
-    # Get the NCI pathway dictionary.
-    nci_path_dct, nci_genes = file_operations.get_nci_path_dct()
-
     # Get the drug response dictionary.
     drug_resp_dct = file_operations.get_drug_resp_dct()
 
@@ -48,7 +45,7 @@ if __name__ == '__main__':
     superdrug_genes = pca.components_[0]
 
     # Write out the superdrug to file.
-    out = open('./results/superdrug_gene_values.txt', 'w')
+    out = open('./results/superdrug_gene_correlation_values.txt', 'w')
     for gene in superdrug_genes:
         out.write(str(gene) + '\n')
     out.close()

@@ -123,6 +123,8 @@ if __name__ == '__main__':
                     for i, val in enumerate(embedding_table):
                         if val > exp_table[i]:
                             num_better_than_expression += 1
+                        if val == exp_table[i]:
+                            num_better_than_expression += 0.5
                     if num_better_than_expression >= 8:
-                        out.write('%s\t%d\n' % (embedding_fname[embedding_fname.index('summ'):],
+                        out.write('%s\t%f\n' % (embedding_fname[embedding_fname.index('summ'):],
                             num_better_than_expression))

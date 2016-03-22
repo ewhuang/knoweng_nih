@@ -79,15 +79,20 @@ Then
 This script computes the 4x4 summary table for all of our methods.
 
 To get the inverse rankings of the top pathways.
-$ python ivnerse_ranking_top_pathways.py
+$ python inverse_ranking_top_pathways.py
+
+$ python subtract_superdrug_from_pathways.py exp p_val
+Removes the superdrug pathways from the expression pathways that are below the
+p_val arugment. Outputs top_pathways_exp_hgnc_subtract_superdrug.txt.
 
 Running random pathways.
-$ python random_control_genes.py RUN_NUM
+$ python random_control_genes.py
 Randomly samples pathways for each drug, where the number of samples equals
 the number of pathway-drug pairs for expression below a certain threshold, with
-this threshold in the range of [0.001, 0.005, 0.01, 0.05, 0.1]. Each script
-runs 100 times, so the argument is the output file name. We can read the 10
-outputs to see 1,000 random runs, and then average them all.
+this threshold in the range of [0.001, 0.005, 0.01, 0.05, 0.1].
+
+$ python reformat_superdrug_genes.py
+Gets the top 250 superdrug genes.
 
 _____VARIOUS SCRIPTS_____
 $ python kegg_lincs_intersection.py
