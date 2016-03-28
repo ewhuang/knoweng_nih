@@ -5,22 +5,25 @@ import sys
 
 ### Goes through the top pathways for any given method, and takes out the top
 ### pathways for the superdrug that have a p-value below the given threshold.
+sub_dir = './results/'
 
-def get_exp_pathways(method):
-    exp_pathways = OrderedDict({})
+def get_top_pathways(method):
+    top_pathways = OrderedDict({})
     if method == 'exp':
-        filename = './results/top_pathways_exp_hgnc.txt'
-    f = open(filename, 'r')
+        filename = 'top_pathways_exp_hgnc.txt'
+    elif method == 'genetic':
+        filename = 'embedding/genetic_top_pathways_500_0.8.US_top_250.txt'
+    f = open(sub_dir + filename, 'r')
     for i, line in enumerate(f):
         if i < 2:
             continue
         line = line.strip().split('\t')
-        assert len(line) == 7
+        assert len(line) == 7 or len(line) == 3
         drug, path, score = line[:3]
-        assert (drug, path) not in exp_pathways
-        exp_pathways[(drug, path)] = score
+        assert (drug, path) not in top_pathways
+        top_pathways[(drug, path)] = score
     f.close()
-    return exp_pathways
+    return top_pathways
 
 def get_superdrug_pathways(superdrug_p_value):
     superdrug_pathways = []
@@ -40,17 +43,18 @@ def main():
         exit(1)
     method = sys.argv[1]
     superdrug_p_value = float(sys.argv[2])
-    assert method in ['exp']
+    assert method in ['exp', 'genetic']
 
-    exp_pathways = get_exp_pathways(method)
+    top_pathways = get_top_pathways(method)
     superdrug_pathways = get_superdrug_pathways(superdrug_p_value)
 
-    out = open('./results/top_pathways_exp_hgnc_subtract_superdrug.txt', 'w')
+    out = open('./results/top_pathways_%s_subtract_superdrug.txt' %
+        method, 'w')
     # Remove the superdrug pathways from the expression pathway data.
-    for (drug, path) in exp_pathways:
+    for (drug, path) in top_pathways:
         if path in superdrug_pathways:
             continue
-        out.write('%s\t%s\t%s\n' % (drug, path, exp_pathways[(drug, path)]))
+        out.write('%s\t%s\t%s\n' % (drug, path, top_pathways[(drug, path)]))
     out.close()
 
 
