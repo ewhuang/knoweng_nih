@@ -101,3 +101,21 @@ def get_superdrug_pathway_p_values():
         superdrug_pathway_p_values[pathway] = float(p_value)
     f.close()
     return superdrug_pathway_p_values
+
+# Gets the top genetic global pathways from random walk rankings.
+def get_top_global_pathways():
+    # Get the index to dictionary mapping.
+    index_to_pathway_dct = {}
+    f = open('./data/nci_pathway_name.txt', 'r')
+    for i, line in enumerate(f):
+        index_to_pathway_dct[i] = line.strip()
+    f.close()
+
+    # Get the rankings of indices.
+    index_rankings = []
+    f = open('./data/genetic.networktop.pathway', 'r')
+    for line in f:
+        index_rankings += [index_to_pathway_dct[int(line.strip()) - 1]]
+    f.close()
+
+    return index_rankings

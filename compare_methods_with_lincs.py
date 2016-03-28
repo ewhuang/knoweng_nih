@@ -15,7 +15,7 @@ embedding_methods = ['ppi', 'genetic', 'literome', 'sequence']
 p_thresh_range = [0.001, 0.005, 0.01, 0.05, 0.1]
 
 # Superdrug pathway p-values.
-sppv = file_operations.get_superdrug_pathway_p_values()
+# sppv = file_operations.get_superdrug_pathway_p_values()
 lincs_drug_path_dct = file_operations.get_lincs_drug_path_dct()
 pathways = set([])
 
@@ -23,6 +23,12 @@ pathways = set([])
 # where keys are drugs, and values are sets of highest rated pathways.
 def get_top_pathways(in_filename, method_p_thresh):
     exp_fname = './results/top_pathways_exp_hgnc.txt'
+
+    # Global pathways.
+    top_global_pathways = file_operations.get_top_global_pathways()
+    num_pathways = len(top_global_pathways)
+    num_global = int(method_p_thresh * num_pathways)
+    top_global_pathways = top_global_pathways[:num_global + 1]
 
     # Read in the file, and record the pathways below the threshold for each
     # drug.
@@ -33,12 +39,16 @@ def get_top_pathways(in_filename, method_p_thresh):
             continue
         drug, path, score = line.strip().split('\t')[:3]
         pathways.add(path)
-        if score == '[]':
+        if score == '[]' or float(score) > method_p_thresh:
             continue
-        # Don't add pathways if they are significant for the superdrug, or if
-        # it's insignificant for the current drug.
-        if sppv[path] <= method_p_thresh or float(score) > method_p_thresh:
+        # # Don't add pathways if they are significant for the superdrug, or if
+        # # it's insignificant for the current drug.
+        # if sppv[path] <= method_p_thresh:
+        #     continue
+        # If the pathway is in the top global pathways, skip it.
+        if path in top_global_pathways:
             continue
+
         if drug not in exp_path_dct:
             exp_path_dct[drug] = set([path])
         else:
@@ -59,10 +69,13 @@ def get_top_pathways(in_filename, method_p_thresh):
             continue
         drug, path, score = line.strip().split('\t')[:3]
         pathways.add(path)
-        if score == '[]':
+        if score == '[]' or drug not in exp_path_dct:
             continue
-        # Don't add pathways if they are significant for the superdrug.
-        if sppv[path] <= method_p_thresh or drug not in exp_path_dct:
+        # # Don't add pathways if they are significant for the superdrug.
+        # if sppv[path] <= method_p_thresh:
+        #     continue
+        # If the pathway is in the top global pathways, skip it.
+        if path in top_global_pathways:
             continue
 
         if drug not in method_drug_dct:
@@ -121,7 +134,7 @@ if __name__ == '__main__':
     method = sys.argv[1]
     top_k = int(sys.argv[2])
 
-    assert (method in ['pca', 'exp', 'l1'] + embedding_methods)
+    assert (method in ['exp'] + embedding_methods)
 
     dimensions = map(str, [50, 100, 500])
     if method in embedding_methods:
