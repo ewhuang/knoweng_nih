@@ -1,56 +1,60 @@
 
-
+import file_operations
 import math
 import operator
+import sys
 
-drug_to_name_dct = {}
-f = open('./data/brd_to_name.txt', 'r')
-for i, line in enumerate(f):
-    # Skip header line.
-    if i == 0 or line == '\n':
-        continue
-    line = line.strip().split('\t')
-    assert len(line) == 3
-    drug_name = line[0]
-    drug_id = line[2]
-    assert drug_id not in drug_to_name_dct
-    drug_to_name_dct[drug_id] = drug_name
-f.close()
+def get_inverse_rankings(subfolder, filename):   
+    brd_drug_to_name_dct = file_operations.get_brd_drug_to_name_dct()
 
-ppi_dct = {}
-f = open('./results/top_pathways_genetic_subtract_superdrug.txt', 'r')
-for i, line in enumerate(f):
-    # if i < 2:
-    #     continue
-    line = line.strip().split('\t')
-    assert len(line) == 3
-    drug, path, score = line
-    # if drug not in drug_list:
-    #     continue
-    score = float(score)
-    ppi_dct[(drug, path)] = score
-f.close()
+    print 'Taking out top 20 global pathways'
+    top_global_pathways = file_operations.get_top_global_pathways()[:20]
 
-# Sort ppi dictionary by value.
-ranked_ppi_dct = {}
-ppi_dct = sorted(ppi_dct.items(), key=operator.itemgetter(1), reverse=True)
-num_pairs = float(len(ppi_dct))
-for i, ((drug, path), score) in enumerate(ppi_dct):
-    new_score = (i + 1) / num_pairs
-    ranked_ppi_dct[(drug, path)] = new_score
+    drug_path_dct = {}
+    f = open(subfolder + filename, 'r')
+    for i, line in enumerate(f):
+        # Skip header lines.
+        if i < 2:
+            continue
+        line = line.strip().split('\t')
+        assert len(line) == 3
+        drug, path, score = line
+        if path in top_global_pathways:
+            continue
+        drug_path_dct[(drug, path)] = float(score)
+    f.close()
 
-out = open('./results/genetic_inverse_rank.txt', 'w')
-# out.write('drug\tpath\tlincs_p_value\tppi_inverse_rank\n')
-out.write('drug\tpath\tgenetic_inverse_rank\n')
-# lincs_dct = sorted(lincs_dct.items(), key=operator.itemgetter(1))
-ranked_ppi_dct = sorted(ranked_ppi_dct.items(), key=operator.itemgetter(1),
-    reverse=True)
-# for (drug, path), score in lincs_dct:
-    # assert (drug, path) in ranked_ppi_dct
-for (drug, path), score in ranked_ppi_dct:
-    # out.write('%s\t%s\t%g\t%g\n' % (drug_to_name_dct[drug], path, score, 
-    #     ranked_ppi_dct[(drug, path)]))
-    out.write('%s\t%s\t%g\n' % (drug_to_name_dct[drug], path, score))
+    # Sort ppi dictionary by value.
+    ranked_drug_path_dct = {}
+    drug_path_dct = sorted(drug_path_dct.items(), key=operator.itemgetter(1),
+        reverse=True)
+    for i, ((drug, path), score) in enumerate(drug_path_dct):
+        inverse_ranking = (i + 1) / float(len(drug_path_dct))
+        ranked_drug_path_dct[(drug, path)] = inverse_ranking
 
+    ranked_drug_path_dct = sorted(ranked_drug_path_dct.items(),
+        key=operator.itemgetter(1), reverse=True)
 
-out.close()
+    out = open(subfolder + 'inverse_' + filename, 'w')
+    out.write('drug\tpath\tinverse_rank\n')
+    for (drug, path), score in ranked_drug_path_dct:
+        out.write('%s\t%s\t%g\n' % (brd_drug_to_name_dct[drug], path, score))
+    out.close()
+
+def main():
+    if len(sys.argv) != 4:
+        print 'Usage:python %s method dimension U_type' % sys.argv[0]
+        exit()
+    method = sys.argv[1]
+    dimension = sys.argv[2]
+    U_type = sys.argv[3]
+    assert method in ['ppi', 'genetic', 'literome', 'sequence']
+    assert dimension in ['50', '100', '500', '1000', '1500', '2000']
+    assert U_type in ['U', 'US']
+    filename = '%s_top_pathways_%s_0.8.%s_top_250.txt' % (method, dimension,
+        U_type)
+    subfolder = './results/embedding/'
+    get_inverse_rankings(subfolder, filename)
+
+if __name__ == '__main__':
+    main()

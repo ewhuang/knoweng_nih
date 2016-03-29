@@ -1,8 +1,9 @@
 ### Author: Edward Huang
 
 from collections import OrderedDict
-import operator
+import file_operations
 import math
+import operator
 import sys
 
 ### This script opens the embedding data and performs drug/pathway analysis.
@@ -24,45 +25,14 @@ def cosine_similarity(v1, v2):
     return sumxy / math.sqrt(sumxx * sumyy)
 
 def find_top_pathways(network, top_k):
-    pathways = set([])
-    f = open('./data/nci_pathway_hgnc.txt', 'r')
-    for line in f:
-        pathway, gene = line.strip().split('\t')
-        pathways.add(pathway)
-    f.close()
+    nci_path_dct, nci_genes = file_operations.get_nci_path_dct()
+    pathways = nci_path_dct.keys()
 
     # Find genes and pathways that appear in embedding.
-    gene_pathway_lst = []
-    f = open('./data/embedding/gene_pathway_id.txt', 'r')
-    for line in f:
-        # entity is either a gene or a pathway.
-        gene_pathway_lst += [line.strip()]
-    f.close()
+    gene_pathway_lst = file_operations.get_embeeding_gene_pathway_lst()
 
     # Find the top genes for each drug.
-    shared_genes = set([])
-    drug_top_genes_dct = {}
-    f = open('./results/top_genes_exp_hgnc.txt', 'r')
-    for line in f:
-        gene, drug, p_val = line.split()
-        if gene not in gene_pathway_lst:
-            continue
-        # The gene appears in both expression and embedding.
-        shared_genes.add(gene)
-        p_val = float(p_val)
-        if drug not in drug_top_genes_dct:
-            drug_top_genes_dct[drug] = {gene: p_val}
-            assert (len(drug_top_genes_dct[drug]) < top_k)
-        elif len(drug_top_genes_dct[drug]) == top_k:
-            # We have added enough genes for the drug.
-            continue
-        else:
-            drug_top_genes_dct[drug][gene] = p_val
-    f.close()
-
-    # Check that each drug has exactly top_k number of genes.
-    for drug in drug_top_genes_dct:
-        assert len(drug_top_genes_dct[drug]) <= top_k
+    shared_genes, drug_top_genes_dct = file_operations.get_exp_drug_top_genes()
 
     # Loop through the files.
     if network == 'ppi':
@@ -130,4 +100,5 @@ if __name__ == '__main__':
     network = sys.argv[1]
     top_k = int(sys.argv[2])
     assert network in ['ppi', 'genetic', 'literome', 'sequence']
+    
     find_top_pathways(network, top_k)

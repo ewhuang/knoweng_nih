@@ -79,7 +79,9 @@ Then
 This script computes the 4x4 summary table for all of our methods.
 
 To get the inverse rankings of the top pathways.
-$ python inverse_ranking_top_pathways.py
+$ python inverse_ranking_top_embedding_pathways.py method dimension U_type
+Outputs file of inverse ranking ni ./results/embedding, where the top pathways
+are.
 
 $ python subtract_superdrug_from_pathways.py exp p_val
 Removes the superdrug pathways from the expression pathways that are below the

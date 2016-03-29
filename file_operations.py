@@ -112,10 +112,65 @@ def get_top_global_pathways():
     f.close()
 
     # Get the rankings of indices.
-    index_rankings = []
+    top_global_pathways = []
     f = open('./data/genetic.networktop.pathway', 'r')
     for line in f:
-        index_rankings += [index_to_pathway_dct[int(line.strip()) - 1]]
+        top_global_pathways += [index_to_pathway_dct[int(line.strip()) - 1]]
     f.close()
 
-    return index_rankings
+    return top_global_pathways
+
+# Dictionary where keys are BRD drug id's, and values are the common names.
+def get_brd_drug_to_name_dct():
+    brd_drug_to_name_dct = {}
+    f = open('./data/brd_to_name.txt', 'r')
+    for i, line in enumerate(f):
+        # Skip header line.
+        if i == 0 or line == '\n':
+            continue
+        line = line.strip().split('\t')
+        assert len(line) == 3
+        drug_name = line[0]
+        drug_id = line[2]
+        assert drug_id not in brd_drug_to_name_dct
+        brd_drug_to_name_dct[drug_id] = drug_name
+    f.close()
+    return brd_drug_to_name_dct
+
+# Find genes and pathways that appear in embedding.
+def get_embeeding_gene_pathway_lst():
+    gene_pathway_lst = []
+    f = open('./data/embedding/gene_pathway_id.txt', 'r')
+    for line in f:
+        # entity is either a gene or a pathway.
+        gene_pathway_lst += [line.strip()]
+    f.close()
+    return gene_pathway_lst
+
+# Find the top genes for each drug based on expression.
+def get_exp_drug_top_genes():
+    shared_genes = set([])
+    drug_top_genes_dct = {}
+    f = open('./results/top_genes_exp_hgnc.txt', 'r')
+    for line in f:
+        gene, drug, p_val = line.split()
+        if gene not in gene_pathway_lst:
+            continue
+        # The gene appears in both expression and embedding.
+        shared_genes.add(gene)
+        p_val = float(p_val)
+        if drug not in drug_top_genes_dct:
+            drug_top_genes_dct[drug] = {gene: p_val}
+            assert (len(drug_top_genes_dct[drug]) < top_k)
+        elif len(drug_top_genes_dct[drug]) == top_k:
+            # We have added enough genes for the drug.
+            continue
+        else:
+            drug_top_genes_dct[drug][gene] = p_val
+    f.close()
+
+    # Check that each drug has exactly top_k number of genes.
+    for drug in drug_top_genes_dct:
+        assert len(drug_top_genes_dct[drug]) <= top_k
+
+    return shared_genes, drug_top_genes_dct

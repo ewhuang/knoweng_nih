@@ -25,10 +25,12 @@ def get_top_pathways(in_filename, method_p_thresh):
     exp_fname = './results/top_pathways_exp_hgnc.txt'
 
     # Global pathways.
+    print 'Taking out top 20 global pathways.'
     top_global_pathways = file_operations.get_top_global_pathways()
-    num_pathways = len(top_global_pathways)
-    num_global = int(method_p_thresh * num_pathways)
-    top_global_pathways = top_global_pathways[:num_global + 1]
+    # num_pathways = len(top_global_pathways)
+    # # num_global = int(method_p_thresh * num_pathways)
+    # top_global_pathways = top_global_pathways[:num_global + 1]
+    top_global_pathways = top_global_pathways[:20]
 
     # Read in the file, and record the pathways below the threshold for each
     # drug.
