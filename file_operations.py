@@ -138,7 +138,7 @@ def get_brd_drug_to_name_dct():
     return brd_drug_to_name_dct
 
 # Find genes and pathways that appear in embedding.
-def get_embeeding_gene_pathway_lst():
+def get_embedding_gene_pathway_lst():
     gene_pathway_lst = []
     f = open('./data/embedding/gene_pathway_id.txt', 'r')
     for line in f:
@@ -148,7 +148,7 @@ def get_embeeding_gene_pathway_lst():
     return gene_pathway_lst
 
 # Find the top genes for each drug based on expression.
-def get_exp_drug_top_genes():
+def get_exp_drug_top_genes(top_k, gene_pathway_lst):
     shared_genes = set([])
     drug_top_genes_dct = {}
     f = open('./results/top_genes_exp_hgnc.txt', 'r')
