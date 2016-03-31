@@ -81,10 +81,8 @@ def find_top_pathways(network, top_k):
         dimension_list = [50, 100, 500, 1000, 1500, 2000]
     else:
         dimension_list = [50, 100, 500]
-        # dimension_list = [50]
     for dim in map(str, dimension_list):
         for suffix in ['U', 'US']:
-        # for suffix in ['U']:
             entity_vector_dct = OrderedDict({})
 
             extension = '%s_0.8.%s' % (dim, suffix)

@@ -67,10 +67,9 @@ if __name__ == '__main__':
 
         # File names for embedding networks.
         for method in ['genetic', 'literome', 'sequence', 'ppi']:
+            dimensions = map(str, [50, 100, 500])
             if method == 'ppi':
-                dimensions = map(str, [50, 100, 500, 1000, 1500, 2000])
-            else:
-                dimensions = map(str, [50, 100, 500])
+                dimensions += map(str, [1000, 1500, 2000])
             for dim in dimensions:
                 for suffix in ['U', 'US']:
                     extension = '%s_0.8.%s' % (dim, suffix)
@@ -99,10 +98,9 @@ if __name__ == '__main__':
         out.write('filename\tnum_better_than_correlation\n')
         # Get the embedding summaries.
         for method in ['genetic', 'literome', 'sequence','ppi']:
-            if method == 'ppi':
-                dimensions = map(str, [50, 100, 500, 1000, 1500, 2000])
-            else:
-                dimensions = map(str, [50, 100, 500])
+            dimensions = map(str, [50, 100, 500])
+            # if method == 'ppi':
+            #     dimensions += map(str, [1000, 1500, 2000])
             for num in dimensions:
                 for suffix in ['U', 'US']:
                     entity_vector_dct = OrderedDict({})
