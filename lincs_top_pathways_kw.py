@@ -10,7 +10,6 @@ import time
 ### Usage: python top_pathways_lincs.py
 ### Run time: 42 minutes
 
-Z_SCORE_MIN = 2
 KRUSKAL_P_THRESH = 0.05
 # Define -infinity
 inf = float('-inf')
