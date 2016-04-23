@@ -9,6 +9,7 @@ import time
 ### Find top genes from gene expression and mutation data sets.
 ### Uses Krusakl-Wallis instead of Fisher's test to then use the gene rankings
 ### to find most similar pathways.
+### Run time: 3.4 hours.
 
 # The maximum p-value to for Pearson's between drug response and gene expression
 # to allow to be a significantly correlated gene for a drug.
@@ -28,8 +29,7 @@ def write_genes_pathways(exp_dct, method):
     progress_counter = 0
     num_drugs = float(len(drug_resp_dct))
 
-    print 'only running for the first drug...'
-    for drug in drug_resp_dct.keys()[0]:
+    for drug in drug_resp_dct:
         print 'Progress: %f%%' % (progress_counter / num_drugs * 100)
         
         # Clean drug responses for each drug.
@@ -86,7 +86,7 @@ def write_genes_pathways(exp_dct, method):
     path_out.write('num_below_%f\t%d\n' % (KRUSKAL_P_THRESH, num_low_p))
     path_out.write('drug\tpath\tscore\n')    
     for (drug, path), p_val in top_paths:
-        path_out.write('%s\t%s\t%g' % (drug, path, p_val))
+        path_out.write('%s\t%s\t%g\n' % (drug, path, p_val))
     path_out.close()
 
 def main():
