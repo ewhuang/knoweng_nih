@@ -90,6 +90,9 @@ this threshold in the range of [0.001, 0.005, 0.01, 0.05, 0.1].
 $ python reformat_superdrug_genes.py
 Gets the top 250 superdrug genes.
 
+_____KRUSKAL-WALLIS TESTS_____
+$ python expression_top_pathways_kw.py
+
 _____VARIOUS SCRIPTS_____
 $ python kegg_lincs_intersection.py
 Finds how many pathways are in common between KEGG pathway genes and LINCS
