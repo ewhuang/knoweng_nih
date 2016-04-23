@@ -71,7 +71,7 @@ def min_p_exp(p_val_lst):
     return 1 - math.pow((1 - min(p_val_lst)), len(p_val_lst))
 def get_lincs_drug_path_dct():
     # print 'Extracting level 4 LINCS top pathways...'
-    f = open('./results/top_pathways_lincs_Aft_3_hgnc.txt', 'r')
+    f = open('./results/top_pathways_lincs_diff_normalize_DMSO.txt', 'r')
     lincs_drug_path_dct = {}
     for i, line in enumerate(f):
         # Skip header lines.

@@ -9,8 +9,7 @@ scripts meant to run on Mayo clinic data.
 
 ______________________________________
 Finds the top pathways for each drug, cell-line pair from LINCS dataset.
->>> python lincs_top_pathways.py AFT_NUM
-AFT_NUM is the suffix for various p-values of LINCS z-score files.
+>>> python lincs_top_pathways.py
 Reads in the LINCS data for level 4, and then finds the top pathway, drug
 and cell-line pairs by using Fisher's hypergeometric test. The top genes for
 each drug are found by taking z-scores the absolute values of which are higher
