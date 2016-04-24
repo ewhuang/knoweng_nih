@@ -94,6 +94,10 @@ _____KRUSKAL-WALLIS TESTS_____
 Recompute the top pathway rankings using Kruskal-wallis tests instead of
 Fisher's test.
 $ python expression_top_pathways_kw.py
+
+First, preprocess LINCS file.
+$ python preprocess_lincs_z_scores.py
+
 $ python lincs_top_pathways_kw.py
 
 Embedding doesn't use Fisher's test.
