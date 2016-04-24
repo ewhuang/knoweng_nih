@@ -91,7 +91,12 @@ $ python reformat_superdrug_genes.py
 Gets the top 250 superdrug genes.
 
 _____KRUSKAL-WALLIS TESTS_____
+Recompute the top pathway rankings using Kruskal-wallis tests instead of
+Fisher's test.
 $ python expression_top_pathways_kw.py
+$ python lincs_top_pathways_kw.py
+
+Embedding doesn't use Fisher's test.
 
 _____VARIOUS SCRIPTS_____
 $ python kegg_lincs_intersection.py

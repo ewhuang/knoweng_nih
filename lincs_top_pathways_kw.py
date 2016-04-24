@@ -42,14 +42,18 @@ def main():
     # Read NCI pathway dictionary and the lincs_genes in the NCI pathways.
     nci_path_dct, nci_genes = file_operations.get_nci_path_dct()
 
+    print 'Getting lincs genes...'
     lincs_genes = get_lincs_genes()
 
+    print 'Reading in matrix...'
     drugs, gene_matrix = get_drugs_and_gene_matrix()
 
     # Transpose the gene matrix so we can filter out the lincs_genes.
+    print 'transposing matrix the first time...'
     gene_matrix = zip(*gene_matrix)
     assert len(gene_matrix) == len(lincs_genes)
     
+    print 'converting z_scores...'
     gene_dct = OrderedDict({})
     gene_counter, num_genes = 0, len(lincs_genes)
     while gene_matrix != []:
@@ -72,6 +76,7 @@ def main():
     # Update lincs_genes to be just the valid ones in our dictionary.
     lincs_genes = gene_dct.keys()
 
+    print 'transposing back matrix...'
     # Transposing back the z-scores.
     drug_matrix = [drugs]
     for gene in gene_dct:
@@ -79,6 +84,7 @@ def main():
     gene_dct.clear()
     drug_matrix = zip(*drug_matrix)
 
+    print 'making dictionary...'
     # Make a new dictionary, with keys as drugs, and values as lists of LINCS
     # z-scores.
     temp_drug_matrix = OrderedDict({})
@@ -101,7 +107,7 @@ def main():
     progress_counter = 0
     num_drugs = float(len(drug_matrix))
 
-    for drug in [drug_matrix.keys()[0]]:
+    for drug in drug_matrix:
         z_scores = drug_matrix[drug]
         # Average across samples.
         z_scores = [mean(x) for x in zip(*z_scores)]
@@ -130,7 +136,7 @@ def main():
             non_pathway_z_scores = non_pathway_z_scores.values()
             h_stat, p_value = kruskalwallis(pathway_z_scores,
                 non_pathway_z_scores)
-            top_drug_path_pairs[(drug, path)] = p_value
+            top_drug_path_pairs[(drug, path, h_stat)] = p_value
 
             if p_value < KRUSKAL_P_THRESH:
                 num_low_p += 1
@@ -140,12 +146,14 @@ def main():
     top_paths = sorted(top_drug_path_pairs.items(), key=operator.itemgetter(1))
 
     # Write out the results.
-    out = open('./results/top_pathways_lincs_diff_normalize_DMSO_kw.txt', 'w')
+    path_out = open('./results/top_pathways_lincs_diff_normalize_DMSO_kw.txt',
+        'w')
     path_out.write('num_below_%f\t%d\n' % (KRUSKAL_P_THRESH, num_low_p))
-    path_out.write('drug\tcell_line\tpath\tscore\n')    
-    for (drug, path), p_val in top_paths:
+    path_out.write('drug\tcell_line\tpath\th_statistic\tp_value\n')    
+    for (drug, path, h_stat), p_val in top_paths:
         drug, cell_line = drug.split('_')
-        path_out.write('%s\t%s\t%s\t%g' % (drug, cell_line, path, p_val))
+        path_out.write('%s\t%s\t%s\t%g\t%g\n' % (drug, cell_line, path,
+            h_stat, p_val))
     path_out.close()
 
 if __name__ == '__main__':

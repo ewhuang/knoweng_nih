@@ -1,9 +1,9 @@
 ### Author: Edward Huang
 
 import file_operations
+import operator
 from scipy.stats.mstats import kruskalwallis
 from scipy.stats.stats import pearsonr
-import operator
 import time
 
 ### Find top genes from gene expression and mutation data sets.
@@ -72,7 +72,7 @@ def write_genes_pathways(exp_dct, method):
             non_pathway_correlations = non_pathway_correlations.values()
             h_stat, p_value = kruskalwallis(pathway_correlations,
                 non_pathway_correlations)
-            top_drug_path_pairs[(drug, path)] = p_value
+            top_drug_path_pairs[(drug, path, h_stat)] = p_value
 
             if p_value < KRUSKAL_P_THRESH:
                 num_low_p += 1
@@ -84,9 +84,9 @@ def write_genes_pathways(exp_dct, method):
     # Write out the results.
     path_out = open('./results/top_pathways_%s_kw.txt' % method, 'w')
     path_out.write('num_below_%f\t%d\n' % (KRUSKAL_P_THRESH, num_low_p))
-    path_out.write('drug\tpath\tscore\n')    
-    for (drug, path), p_val in top_paths:
-        path_out.write('%s\t%s\t%g\n' % (drug, path, p_val))
+    path_out.write('drug\tpath\th_statistic\tp_value\n')    
+    for (drug, path, h_stat), p_val in top_paths:
+        path_out.write('%s\t%s\t%g\t%g\n' % (drug, path, h_stat, p_val))
     path_out.close()
 
 def main():

@@ -92,6 +92,29 @@ def get_lincs_drug_path_dct():
         lincs_drug_path_dct[(drug, path)] = min_p_exp(p_val_lst)
     return lincs_drug_path_dct
 
+def get_lincs_drug_path_dct_kw():
+    # print 'Extracting level 4 LINCS top pathways...'
+    f = open('./results/top_pathways_lincs_diff_normalize_DMSO_kw.txt', 'r')
+    lincs_drug_path_dct = {}
+    for i, line in enumerate(f):
+        # Skip header lines.
+        if i < 2:
+            continue
+        drug, cell_line, path, score = line.strip().split('\t')[:4]
+        # Add the drug-pathway p-value to the dictionary.
+        score = float(score)
+        if (drug, path) in lincs_drug_path_dct:
+            lincs_drug_path_dct[(drug, path)] += [score]
+        else:
+            lincs_drug_path_dct[(drug, path)] = [score]
+    f.close()
+    # Aggregate p-values by cell lines.
+    for (drug, path) in lincs_drug_path_dct:
+        p_val_lst = lincs_drug_path_dct[(drug, path)]
+        # Change the function for other aggregation functions.
+        lincs_drug_path_dct[(drug, path)] = min_p_exp(p_val_lst)
+    return lincs_drug_path_dct
+
 # Get the superdrug's p-values for all the pathways.
 def get_superdrug_pathway_p_values():
     superdrug_pathway_p_values = {}
