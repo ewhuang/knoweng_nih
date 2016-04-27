@@ -86,7 +86,7 @@ def write_genes_pathways(exp_dct, method):
     path_out.write('num_below_%f\t%d\n' % (KRUSKAL_P_THRESH, num_low_p))
     path_out.write('drug\tpath\th_statistic\tp_value\n')    
     for (drug, path, h_stat), p_val in top_paths:
-        path_out.write('%s\t%s\t%g\t%g\n' % (drug, path, h_stat, p_val))
+        path_out.write('%s\t%s\t%g\t%g\n' % (drug, path, p_val, h_stat))
     path_out.close()
 
 def main():
