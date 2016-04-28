@@ -2,7 +2,7 @@
 
 import sys
 import file_operations
-import fisher_test
+from scipy.stats import fisher_exact
 
 ### Takes the drug-pathway scores from either PCA or linear regression L1
 ### and ranks by p-values. For either method, we arrive at a ranking of
@@ -23,14 +23,6 @@ pathways = set([])
 # where keys are drugs, and values are sets of highest rated pathways.
 def get_top_pathways(in_filename, method_p_thresh):
     exp_fname = './results/top_pathways_exp_hgnc.txt'
-
-    # Global pathways.
-    # print 'Taking out top 20 global pathways.'
-    # top_global_pathways = file_operations.get_top_global_pathways()
-    # num_pathways = len(top_global_pathways)
-    # # num_global = int(method_p_thresh * num_pathways)
-    # top_global_pathways = top_global_pathways[:num_global + 1]
-    # top_global_pathways = top_global_pathways[:20]
 
     # Read in the file, and record the pathways below the threshold for each
     # drug.
@@ -83,8 +75,8 @@ def get_top_pathways(in_filename, method_p_thresh):
         if drug not in method_drug_dct:
             method_drug_dct[drug] = set([path])
         elif drug in method_drug_dct:
-            # Skip a path if we have reached the same number of paths as we have
-            # for the expression data.
+            # Go to next path if we have reached the same number of paths as we
+            # have for the expression data.
             if len(exp_path_dct[drug]) == len(method_drug_dct[drug]):
                 continue
             method_drug_dct[drug].add(path)
@@ -121,8 +113,9 @@ def compare_methods(method, in_filename, out_filename):
 
                 f_table = ([[lincs_and_res, lincs_not_res],
                     [res_not_lincs, neither]])
-                ft = fisher_test.FishersExactTest(f_table)
-                p_val = ft.two_tail_p()
+                o_r, p_val = fisher_exact(f_table)
+                # ft = fisher_test.FishersExactTest(f_table)
+                # p_val = ft.two_tail_p()
 
                 out.write('%f\t%f\t%s\t%d\t%d\t' % (method_p_thresh,
                     lincs_p_thresh, drug, lincs_and_res, lincs_not_res))
@@ -131,12 +124,12 @@ def compare_methods(method, in_filename, out_filename):
 
 if __name__ == '__main__':
     if (len(sys.argv) < 3):
-        print "Usage: " + sys.argv[0] + " exp/ppi/genetic/literome/sequence TOP_K"
+        print "Usage: " + sys.argv[0] + " exp/expkw/ppi/genetic/literome/sequence TOP_K"
         exit(1)
     method = sys.argv[1]
     top_k = int(sys.argv[2])
 
-    assert (method in ['exp'] + embedding_methods)
+    assert (method in ['exp', 'expkw'] + embedding_methods)
 
     dimensions = map(str, [50, 100, 500])
     if method in embedding_methods:
@@ -151,4 +144,9 @@ if __name__ == '__main__':
     elif method == 'exp':
         in_filename = './results/top_pathways_exp_hgnc.txt'
         out_filename = './results/lincs_comparison_files/compare_lincs_Aft_3_and_exp_hgnc.txt'
+        compare_methods(method, in_filename, out_filename)
+    # Expression top pathways computed with Krusakl-Wallis
+    elif method == 'expkw':
+        in_filename = './results/top_pathways_exp_kw.txt'
+        out_filename = './results/lincs_comparison_files/compare_lincs_Aft_3_and_exp_kw.txt'
         compare_methods(method, in_filename, out_filename)
