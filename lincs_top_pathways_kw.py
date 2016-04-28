@@ -22,6 +22,8 @@ def main():
     top_drug_path_pairs = {}
     # Reading in preprocessed data.
     lincs_genes = []
+    num_drugs = 9298.0
+    drug_counter = 0.0
 
     f = open('./data/processed_lincs_normalized_DMSO.txt', 'r')
     for i, line in enumerate(f):
@@ -52,6 +54,8 @@ def main():
 
             if p_value < KRUSKAL_P_THRESH:
                 num_low_p += 1
+        drug_counter += 1
+        print 'Progres:%f%%' % (drug_counter / num_drugs * 100)
     f.close()
 
     top_paths = sorted(top_drug_path_pairs.items(), key=operator.itemgetter(1))
