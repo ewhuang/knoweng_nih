@@ -106,3 +106,10 @@ _____VARIOUS SCRIPTS_____
 $ python kegg_lincs_intersection.py
 Finds how many pathways are in common between KEGG pathway genes and LINCS
 genes.
+
+For the paper.
+This script finds the drugs the NetPath has below the threshold that Fisher's
+test does not retrieve for gene expression values. PPI, for 0.01 and 0.005
+find 13 drug-path pairs. Expression only finds 10.
+
+$ python various_paper_scripts.py

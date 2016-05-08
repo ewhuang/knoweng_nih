@@ -4,10 +4,12 @@ import file_operations
 from scipy.stats.stats import pearsonr
 from scipy.stats import fisher_exact
 import operator
+import time
 
 ### Find top genes from gene expression and mutation data sets.
 ### Uses Fisher's test to then use the gene rankings to find most similar
 ### pathways.
+### Run time: 5.3 hours.
 
 # The maximum p-value to for Pearson's between drug response and gene expression
 # to allow to be a significantly correlated gene for a drug.
@@ -52,7 +54,7 @@ def write_genes_pathways(data_dct, method):
             # Find the pearson coefficient between these two lists.
             pcc, p_value = pearsonr(drug_resp, gene_data)
             if p_value < PEARSON_P_THRESH:
-                gene_drug_correlations[(gene, drug)] = pcc
+                gene_drug_correlations[(gene, drug, pcc)] = p_value
                 drug_top_correlated_genes[gene] = p_value
         # These are the top correlated genes for the drug.
         top_genes = sorted(drug_top_correlated_genes.items(),
@@ -70,9 +72,11 @@ def write_genes_pathways(data_dct, method):
             neither = len(gene_universe) - len(corr_genes.union(path_genes))
             assert neither == len((gene_universe.difference(
                 corr_genes)).difference(path_genes))
+
             # o_r = odds ratio.
             o_r, p_value = fisher_exact([[corr_and_path, corr_not_path], 
                 [path_not_corr, neither]])
+            
             # Count the number of significant p-values.
             if p_value < FISHER_P_THRESH:
                 num_low_p += 1
@@ -84,7 +88,7 @@ def write_genes_pathways(data_dct, method):
     # Write out the results.
     path_out = open('./results/top_pathways_%s_hgnc.txt' % method, 'w')
     path_out.write('num_below_%f\t%d\n' % (FISHER_P_THRESH, num_low_p))
-    path_out.write('drug\tpath\tscore\tinter\tcorr\tpath\tneither\n')    
+    path_out.write('drug\tpath\tp_value\tinter\tcorr\tpath\tneither\n')    
     for key, p_val in top_paths:
         drug, path, inter, corr_len, path_len, neither = key
         string = '%s\t%s\t%g\t%d\t%d\t' % (drug, path, p_val, inter, corr_len)
@@ -94,14 +98,15 @@ def write_genes_pathways(data_dct, method):
 
     # Sort the top genes by value. Get the top genes.
     gene_out = open('./results/top_genes_%s_hgnc.txt' % method, 'w')
+    gene_out.write('gene\tdrug\tcorrelation\tp_value\n')
     print 'Writing top genes for ' + method + '...'
     gene_drug_correlations = sorted(gene_drug_correlations.items(),
-        key=operator.itemgetter(1), reverse=True)
-    for (gene, drug), score in gene_drug_correlations:
-        gene_out.write(gene + '\t' + drug + '\t' + str(score) + '\n') 
+        key=operator.itemgetter(1))
+    for (gene, drug, pcc), p_value in gene_drug_correlations:
+        gene_out.write('%s\t%s\t%f\t%g\n' % (gene, drug, pcc, p_value))
     gene_out.close()
 
-if __name__ == '__main__':
+def main():
     # Keys are genes, values are lists of gene expression across all patients.
     # mut_dct = OrderedDict({})
 
@@ -121,3 +126,8 @@ if __name__ == '__main__':
     # Write the top pathways for gene expression and mutation.
     write_genes_pathways(exp_dct, 'exp')
     # write_genes_pathways(mut_dct, 'mut')
+
+if __name__ == '__main__':
+    start_time = time.time()
+    main()
+    print("--- %s seconds ---" % (time.time() - start_time))
