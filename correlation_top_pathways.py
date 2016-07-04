@@ -1,21 +1,55 @@
 ### Author: Edward Huang
 
+import cPickle as pickle
 import file_operations
+import json
+import numpy as np
 import operator
-from scipy.stats.stats import pearsonr
+from scipy.stats import pearsonr, betai
 from scipy.stats import fisher_exact
 import time
 
 ### Find the top correlated genes from the gene expression data sets.
 ### Uses Fisher's test with the resulting gene rankings to find most correlated
 ### pathways.
-### Run time: 5.3 hours.
+### Run time: 3.8 hours.
 
 # The maximum Pearson's p-value between drug response and gene expression to be
 # a significantly correlated gene-drug pair.
 PEARSON_P_THRESH = 0.005
 MAX_GENES_PER_DRUG = 250
 FISHER_P_THRESH = 0.0001
+
+def generate_correlation_map(x, y):
+    '''
+    Correlate each n with each m, where x is an N x T matrix, and y is an M x T
+    matrix.
+    '''
+    mu_x = x.mean(1)
+    mu_y = y.mean(1)
+    n = x.shape[1]
+    if n != y.shape[1]:
+        raise ValueError('x and y must ' +
+                         'have the same number of timepoints.')
+    s_x = x.std(1, ddof=n - 1)
+    s_y = y.std(1, ddof=n - 1)
+    cov = np.dot(x,
+                 y.T) - n * np.dot(mu_x[:, np.newaxis],
+                                  mu_y[np.newaxis, :])
+    return (cov / np.dot(s_x[:, np.newaxis], s_y[np.newaxis, :]))[0]
+
+def compute_p_val(r, n):
+    '''
+    Given a Pearson correlation coefficient and a sample size, compute the p-
+    value corresponding to that coefficient.
+    '''
+    df = n - 2
+    if abs(r) == 1.0:
+        prob = 0.0
+    else:
+        t_squared = r**2 * (df / ((1.0 - r) * (1.0 + r)))
+        prob = betai(0.5*df, 0.5, df/(df+t_squared))
+    return prob
 
 def get_gene_drug_correlations(drug, drug_response_vector, gene_expression_dct):
     '''
@@ -24,25 +58,29 @@ def get_gene_drug_correlations(drug, drug_response_vector, gene_expression_dct):
     Each value is the p-value corresponding to the correlation in the key.
     Only records correlations with p-value below PEARSON_P_THRESH.
     '''
-    gene_drug_correlation_dct = {}
-
     # Indices of None values in our drug response table.
     NA_i = [i for i, e in enumerate(drug_response_vector) if e == None]
-    # Delete None elements in the drug response vectors.
-    drug_response_vector = [e for i, e in enumerate(drug_response_vector
-        ) if i not in NA_i]
+    NA_i.reverse()
+
+    gene_map_list = gene_expression_dct.keys()
+    gene_expression_mat = gene_expression_dct.values()
+    # Delete None elements in the drug response and gene expression vectors.
+    for index in NA_i:
+        del drug_response_vector[index]
+        for i, row in enumerate(gene_expression_mat):
+            del row[index]
 
     if len(drug_response_vector) == 0:
         return {}
 
-    for gene in gene_expression_dct:
-        # Remove indices for elements that were None in drug response.
-        gene_expression = [e for i, e in enumerate(gene_expression_dct[gene]
-            ) if i not in NA_i]
+    r = generate_correlation_map(np.array([drug_response_vector]),
+        np.array(gene_expression_mat))
+    num_valid_patients = len(drug_response_vector)
+    p = [compute_p_val(pcc, num_valid_patients) for pcc in r]
 
-        # Compute the Pearson correlation between these drug response and gene
-        # expression.
-        pcc, p_value = pearsonr(drug_response_vector, gene_expression)
+    gene_drug_correlation_dct = {}
+    for i, gene in enumerate(gene_map_list):
+        pcc, p_value = r[i], p[i]
         if p_value < PEARSON_P_THRESH:
             gene_drug_correlation_dct[(gene, drug, pcc)] = p_value
     return gene_drug_correlation_dct
@@ -85,10 +123,14 @@ def write_gene_drug_correlations(gene_drug_correlations):
     # Sort the top genes by value. Get the top genes.
     gene_out = open('./results/top_genes_correlation_hgnc.txt', 'w')
     gene_out.write('gene\tdrug\tcorrelation\tp_value\n')
+    # gene_out.write('gene\tdrug\tcorrelation\n')
     gene_drug_correlations = sorted(gene_drug_correlations.items(),
         key=operator.itemgetter(1))
+    # TODO
     for (gene, drug, pcc), p_value in gene_drug_correlations:
         gene_out.write('%s\t%s\t%f\t%g\n' % (gene, drug, pcc, p_value))
+    # for (gene, drug), pcc in gene_drug_correlations:
+    #     gene_out.write('%s\t%s\t%f\n' % (gene, drug, pcc))
     gene_out.close()
 
 def write_drug_path_correlations(drug_path_p_values, num_low_p):
@@ -110,12 +152,8 @@ def write_drug_path_correlations(drug_path_p_values, num_low_p):
     path_out.close()
 
 def main():
-    # Getting gene expression dictionary.
-    gene_expression_dct = file_operations.get_gene_expression_dct()
     # Extract the NCI pathway data.
     nci_path_dct, nci_genes = file_operations.get_nci_path_dct()
-    # The set of all genes in the gene expression data in addition to NCI data.
-    gene_universe = nci_genes.union(gene_expression_dct.keys())
     # Get the drug response dictionary.
     drug_response_dct = file_operations.get_drug_response_dct()
 
@@ -128,9 +166,13 @@ def main():
 
     progress_counter = 0
     num_drugs = float(len(drug_response_dct))
-    for drug in drug_response_dct:
-        print 'Progress: %f%%' % (progress_counter / num_drugs * 100)
+    gene_universe = []
 
+    for drug in drug_response_dct:
+        # Fetch this repeatedly because of deep copy issues with del[].
+        gene_expression_dct = file_operations.get_gene_expression_dct()
+        if gene_universe == []:
+            gene_universe = nci_genes.union(gene_expression_dct.keys())
         drug_response_vector = drug_response_dct[drug]
 
         curr_gene_drug_correlation_dct = get_gene_drug_correlations(drug,
@@ -142,11 +184,16 @@ def main():
         gene_drug_correlations.update(curr_gene_drug_correlation_dct)
 
         # Get up to MAX_GENES_PER_DRUG correlated genes for the drug.
+        # TODO
         corr_genes = sorted(curr_gene_drug_correlation_dct.items(),
             key=operator.itemgetter(1))[:MAX_GENES_PER_DRUG]
+        # corr_genes = sorted(curr_gene_drug_correlation_dct.items(),
+        #     key=operator.itemgetter(1), reverse=True)[:MAX_GENES_PER_DRUG]
 
-        # Get just the genes now, without the corresponding scores.
+        # # Get just the genes now, without the corresponding scores.
+        # # TODO
         corr_genes = set([gene for (gene, drug, pcc), p_value in corr_genes])
+        # corr_genes = set([gene for (gene, drug), pcc in corr_genes])
 
         curr_drug_path_p_values, curr_num_low_p = get_drug_path_fisher_dct(drug,
             gene_universe, corr_genes, nci_path_dct)
@@ -154,6 +201,7 @@ def main():
         num_low_p += curr_num_low_p
 
         progress_counter += 1.0
+        print 'Progress: %f%%' % (progress_counter / num_drugs * 100)
 
     write_drug_path_correlations(drug_path_p_values, num_low_p)
     write_gene_drug_correlations(gene_drug_correlations)

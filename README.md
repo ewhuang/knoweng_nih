@@ -20,39 +20,49 @@ Currently uses the Stuart data.
 Generates drug-cell_line-pathway combinations to check correctness of LINCS 
 data.
 
-______________________________________
+__________________NETPATH____________________
+1.
 Finds top pathways for the gene expression data.
->>> python expression_top_pathways.py
+$ python correlation_top_pathways.py
 Uses Pearson to find the correlation between gene expression and drug response.
-Outputs two files, top_pathways_exp.txt and top_pathways_mut.txt.
-They show the top drug-pathway pairs through Fisher's test.
+Also finds the most correlated drug-pathway pairs through Fisher's test.
 
-______________________________________
-Uses PCA to find the most highly correlated drug-pathway pairs.
->>> python top_pathways_pca.py
-Outputs results into pca_pathway_scores.txt.
-Uses Spearman. First line of output file contains the number of pathway-drug
-pairs that have p-value below 1e-4 (0.0001) for both first and second most
-principal components.
-
-______________________________________
-Compare the previous drug-pathway ranking methods (PCA, L1 linear regression)
-with LINCS as a baseline.
->>> python compare_methods_with_lincs.py pca/l1/exp
-Outputs file, compare_lincs_and_METHOD.txt, depending on the method of choice. 
-Uses Fisher's method to find how similar each method's top pathways are with
-LINC's top pathways.
-In line 123, we choose which method we use, defined by the methods created at
-the top of the script.
-
-______________________________________
-Run embedding_top_pathways.py to find the top pathways for the embedding method.
-Requires an updated run of top_pathways_mut_exp.py.
-
->>> python embedding_top_pathways.py METHOD top_k
+2.
+$ python embedding_top_pathways.py METHOD top_k
 
 Same format as the other top pathways. However, we can tune the top k pathways
 to keep.
+
+3. Testing NetPath
+$ python embedding_top_pathways_just_cosine.py
+Creates an embedding file, ppi_top_pathways_50_0.8.U_top_250_just_cosine.txt,
+that uses scores of only cosine similarity, not cosine * correlation of top
+k most correlated genes per drug.
+
+$ python random_embedding_top_pathways.py
+Instead of taking the top 250 most correlated genes for each drug, we get the
+a random 250 genes. Only runs for ppi_top_pathways_50_0.8.U_top_250. Produces
+random_ppi_top_pathways_50_0.8.U_top_250.txt.
+
+$ python compute_p_values_netpath.py
+Compares the two files created by the two scripts prior to this one.
+
+
+______________________________________
+4.
+Compare the previous drug-pathway ranking methods (PCA, L1 linear regression,
+Pearson, multiple embedding networks)
+with LINCS as a baseline.
+$ python compare_methods_with_lincs.py correlation/ppi/genetic/literome/
+        sequence
+Compares how each method finds drug-pathway pairs to LINCS, the ground truth, by
+using Fisher's test.
+
+5.
+$ python summary_comparison_with_lincs.py
+
+Prints out summary tables for different p-values how each method compares to the
+baseline, Pearson correlation.
 
 ______________SUPERDRUG______________
 Superdrug - finding the drug that is most representative of all drugs to find

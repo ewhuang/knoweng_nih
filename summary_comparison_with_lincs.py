@@ -59,12 +59,12 @@ if __name__ == '__main__':
 
     # File name for all files.
     base_fname = 'compare_lincs_Aft_3_and_'
-    exp_fname = base_fname + 'exp_hgnc.txt'
+    correlation_fname = base_fname + 'correlation_hgnc.txt'
     
     print 'Currently not comparing L1...'
 
     # File name for correlation.
-    summarize_file_and_write(exp_fname, comparison_p_thresh)
+    summarize_file_and_write(correlation_fname, comparison_p_thresh)
 
     # File names for embedding networks.
     for method in ['genetic', 'literome', 'sequence', 'ppi']:
@@ -83,16 +83,16 @@ if __name__ == '__main__':
     # l1_fname = base_fname + 'l1_hgnc.txt'
     # # summarize_file_and_write(l1_fname)
 
-    # Compare the expression summaries with embedding summaries.
-    exp_file = open('%s%s%g/summ_%s' % (main_folder, subfolder,
-        comparison_p_thresh, exp_fname), 'r')
-    exp_table = []
-    for i, line in enumerate(exp_file):
+    # Compare the correlation summaries with embedding summaries.
+    correlation_file = open('%s%s%g/summ_%s' % (main_folder, subfolder,
+        comparison_p_thresh, correlation_fname), 'r')
+    correlation_table = []
+    for i, line in enumerate(correlation_file):
         if i == 0:
             continue
         line = map(float, line.split())[1:]
-        exp_table += line
-    exp_file.close()
+        correlation_table += line
+    correlation_file.close()
 
     out = open('%s%s%g/best_files.txt' % (main_folder, subfolder,
         comparison_p_thresh), 'w')
@@ -118,12 +118,13 @@ if __name__ == '__main__':
                     line = map(float, line.split())[1:]
                     embedding_table += line
                 f.close()
-                num_better_than_expression = 0
+                num_better_than_correlation = 0
                 for i, val in enumerate(embedding_table):
-                    if val > exp_table[i]:
-                        num_better_than_expression += 1
-                    if val == exp_table[i]:
-                        num_better_than_expression += 0.5
-                if num_better_than_expression >= 8:
-                    out.write('%s\t%d\n' % (embedding_fname[embedding_fname.index('summ'):],
-                        num_better_than_expression))
+                    if val > correlation_table[i]:
+                        num_better_than_correlation += 1
+                    if val == correlation_table[i]:
+                        num_better_than_correlation += 0.5
+                if num_better_than_correlation >= 8:
+                    out.write('%s\t%d\n' % (embedding_fname[
+                        embedding_fname.index('summ'):],
+                        num_better_than_correlation))

@@ -106,7 +106,7 @@ def compute_drug_path_score(drug, gene_p_val_dct, entity_vector_dct,
             # cos = cosine_dct[gene]
             cos = cosine_matrix[path_i, gene_i]
             # drug_path_score += abs(cos * gene_drug_corr)
-            drug_path_score += cos * gene_drug_corr
+            drug_path_score += cos
         drug_path_score_dct[(drug, pathway)] = drug_path_score
     return drug_path_score_dct
 
@@ -168,9 +168,8 @@ def find_top_pathways(network, top_k):
         ) = file_operations.get_corr_drug_top_genes(top_k,
         embedding_gene_pathway_lst)
 
-    dimension_list = create_dimension_list(network)
-    for dimension in dimension_list:
-        for suffix in ['U', 'US']:
+    for dimension in ['50']:
+        for suffix in ['U']:
             entity_vector_dct, extension = get_entity_vector(network, dimension,
                 suffix, embedding_gene_pathway_lst,
                 embedding_and_expression_genes, nci_path_dct)
@@ -186,24 +185,17 @@ def find_top_pathways(network, top_k):
             drug_path_score_dct = sorted(drug_path_score_dct.items(),
                 key=operator.itemgetter(1), reverse=True)
             
-            subfolder = './results/embedding/'
+            subfolder = './results/random_embedding/'
 
-            out_fname = '%s_top_pathways_%s_top_%d.txt' % (network, extension,
+            out_fname = '%s_top_pathways_%s_top_%d_just_cosine.txt' % (network, extension,
                 top_k)
             write_top_pathway_file(network, extension, top_k,
                 drug_path_score_dct, subfolder, out_fname)
 
             write_inverse_rankings(subfolder, out_fname)
 
-def main():
-    if (len(sys.argv) != 3):
-        print "Usage: " + sys.argv[0] + " ppi/genetic/literome/sequence top_k"
-        exit(1)
-    network = sys.argv[1]
-    assert network in ['ppi', 'genetic', 'literome', 'sequence']
-    top_k = int(sys.argv[2])
-    
-    find_top_pathways(network, top_k)
+def main():    
+    find_top_pathways('ppi', 250)
 
 if __name__ == '__main__':
     start_time = time.time()

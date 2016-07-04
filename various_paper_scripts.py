@@ -97,7 +97,7 @@ def main():
 
     drugs = get_drug_differences('%scompare_lincs_Aft_3_and_exp_hgnc.txt' % (
         main_folder), ('%scompare_lincs_Aft_3_and_ppi_50_0.8.U_top_250_hgnc.txt'
-        % (main_folder)), 0.01, 0.005)
+        % (main_folder)), 0.01, 0.01)
 
     netpath_drug_path_dct = get_p_values_given_drugs('./results/embedding/' + 
         'inverse_rankings/inverse_ppi_top_pathways_50_0.8.U_top_250.txt', drugs)
