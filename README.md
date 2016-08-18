@@ -9,14 +9,13 @@ scripts meant to run on Mayo clinic data.
 
 ______________________________________
 Finds the top pathways for each drug, cell-line pair from LINCS dataset.
->>> python lincs_top_pathways.py
-Reads in the LINCS data for level 4, and then finds the top pathway, drug
-and cell-line pairs by using Fisher's hypergeometric test. The top genes for
-each drug are found by taking z-scores the absolute values of which are higher
-than 2.0. Output file is ./results/top_pathways_lincs_Aft_AFT_NUM.txt.
-Currently uses the Stuart data.
+$ python lincs_top_pathways.py z_score_min max_genes_per_drug
 
->>> python top_pathways_lincs_positive_control.py AFT_NUM
+Original tuning parameters:
+Z_SCORE_MIN = 2
+MAX_GENES_PER_DRUG = 250
+
+$ python top_pathways_lincs_positive_control.py AFT_NUM
 Generates drug-cell_line-pathway combinations to check correctness of LINCS 
 data.
 
@@ -28,6 +27,9 @@ Uses Pearson to find the correlation between gene expression and drug response.
 Also finds the most correlated drug-pathway pairs through Fisher's test.
 
 2.
+Here, we can decide whether to use abs(cos) * corr or just (cos * corr) when
+computing a drug-pathway score (line 110).
+
 $ python embedding_top_pathways.py METHOD top_k
 
 Same format as the other top pathways. However, we can tune the top k pathways
@@ -47,19 +49,18 @@ random_ppi_top_pathways_50_0.8.U_top_250.txt.
 $ python compute_p_values_netpath.py
 Compares the two files created by the two scripts prior to this one.
 
-
 ______________________________________
 4.
 Compare the previous drug-pathway ranking methods (PCA, L1 linear regression,
 Pearson, multiple embedding networks)
 with LINCS as a baseline.
 $ python compare_methods_with_lincs.py correlation/ppi/genetic/literome/
-        sequence
+        sequence top_k
 Compares how each method finds drug-pathway pairs to LINCS, the ground truth, by
 using Fisher's test.
 
 5.
-$ python summary_comparison_with_lincs.py
+$ python summary_comparison_with_lincs.py top_k
 
 Prints out summary tables for different p-values how each method compares to the
 baseline, Pearson correlation.
@@ -101,9 +102,10 @@ $ python reformat_superdrug_genes.py
 Gets the top 250 superdrug genes.
 
 _____KRUSKAL-WALLIS TESTS_____
-Recompute the top pathway rankings using Kruskal-wallis tests instead of
-Fisher's test.
-$ python expression_top_pathways_kw.py
+Recompute the top pathway rankings using the Kruskal-Wallis H-test instead of
+Fisher's exact test.
+
+$ python kw_top_pathways.py
 
 First, preprocess LINCS file.
 $ python preprocess_lincs_z_scores.py

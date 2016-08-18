@@ -12,44 +12,13 @@ import time
 ### Find the top correlated genes from the gene expression data sets.
 ### Uses Fisher's test with the resulting gene rankings to find most correlated
 ### pathways.
-### Run time: 3.8 hours.
+### Run time: 75 minutes.
 
 # The maximum Pearson's p-value between drug response and gene expression to be
 # a significantly correlated gene-drug pair.
 PEARSON_P_THRESH = 0.005
 MAX_GENES_PER_DRUG = 250
 FISHER_P_THRESH = 0.0001
-
-def generate_correlation_map(x, y):
-    '''
-    Correlate each n with each m, where x is an N x T matrix, and y is an M x T
-    matrix.
-    '''
-    mu_x = x.mean(1)
-    mu_y = y.mean(1)
-    n = x.shape[1]
-    if n != y.shape[1]:
-        raise ValueError('x and y must ' +
-                         'have the same number of timepoints.')
-    s_x = x.std(1, ddof=n - 1)
-    s_y = y.std(1, ddof=n - 1)
-    cov = np.dot(x,
-                 y.T) - n * np.dot(mu_x[:, np.newaxis],
-                                  mu_y[np.newaxis, :])
-    return (cov / np.dot(s_x[:, np.newaxis], s_y[np.newaxis, :]))[0]
-
-def compute_p_val(r, n):
-    '''
-    Given a Pearson correlation coefficient and a sample size, compute the p-
-    value corresponding to that coefficient.
-    '''
-    df = n - 2
-    if abs(r) == 1.0:
-        prob = 0.0
-    else:
-        t_squared = r**2 * (df / ((1.0 - r) * (1.0 + r)))
-        prob = betai(0.5*df, 0.5, df/(df+t_squared))
-    return prob
 
 def get_gene_drug_correlations(drug, drug_response_vector, gene_expression_dct):
     '''
@@ -73,10 +42,10 @@ def get_gene_drug_correlations(drug, drug_response_vector, gene_expression_dct):
     if len(drug_response_vector) == 0:
         return {}
 
-    r = generate_correlation_map(np.array([drug_response_vector]),
-        np.array(gene_expression_mat))
+    r = file_operations.generate_correlation_map(np.array(
+        [drug_response_vector]), np.array(gene_expression_mat))
     num_valid_patients = len(drug_response_vector)
-    p = [compute_p_val(pcc, num_valid_patients) for pcc in r]
+    p = [file_operations.compute_p_val(pcc, num_valid_patients) for pcc in r]
 
     gene_drug_correlation_dct = {}
     for i, gene in enumerate(gene_map_list):

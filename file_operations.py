@@ -2,7 +2,9 @@
 
 from collections import OrderedDict
 import math
+import numpy as np
 import random
+from scipy.stats import betai
 
 ### This file contains functions that parse the data files and return the 
 ### data objects that we work with in our scripts.
@@ -36,9 +38,9 @@ def get_nci_path_dct():
 
 def get_drug_response_dct():
     '''
-    Returns a dictionary.
-    Each key is a drug, and each value is a list of drug responses for that drug
-    across all patients.
+    Returns a dictionary mapping drugs to drug response values.
+    Key: drug -> str
+    Value: list of drug responses for the drug key -> list(float)
     '''
     drug_response_dct = OrderedDict({})
     resp_file = open('./data/auc_hgnc.tsv', 'r')
@@ -62,9 +64,9 @@ def get_drug_response_dct():
 
 def get_gene_expression_dct():
     '''
-    Returns a dictionary.
-    Each key is a gene, each value is a list of gene expression values across
-    all patients.
+    Returns a dictionary mapping genes to gene expression values.
+    Key: gene -> str
+    Value: list of gene expression values -> list(float)
     '''
     gene_expression_dct = OrderedDict({})
     exp_file = open('./data/gene_expression_hgnc.tsv', 'r')
@@ -88,7 +90,7 @@ def min_p_exp(p_val_lst):
     return 1 - math.pow((1 - min(p_val_lst)), len(p_val_lst))
 def get_lincs_drug_path_dct():
     # print 'Extracting level 4 LINCS top pathways...'
-    f = open('./results/top_pathways_lincs_diff_normalize_DMSO.txt', 'r')
+    f = open('./results/new_top_pathways_lincs_diff_normalize_DMSO.txt', 'r')
     lincs_drug_path_dct = {}
     for i, line in enumerate(f):
         # Skip header lines.
@@ -239,3 +241,69 @@ def get_corr_drug_random_genes(top_k, embedding_gene_pathway_lst):
     random.shuffle(embedding_and_expression_genes)
 
     return embedding_and_expression_genes[:top_k]
+
+# correlation_top_pathways.py
+# kw_top_pathways.py
+def generate_correlation_map(x, y):
+    '''
+    Correlate each n with each m, where x is an N x T matrix, and y is an M x T
+    matrix.
+    '''
+    mu_x = x.mean(1)
+    mu_y = y.mean(1)
+    n = x.shape[1]
+    if n != y.shape[1]:
+        raise ValueError('x and y must ' +
+                         'have the same number of timepoints.')
+    s_x = x.std(1, ddof=n - 1)
+    s_y = y.std(1, ddof=n - 1)
+    cov = np.dot(x,
+                 y.T) - n * np.dot(mu_x[:, np.newaxis],
+                                  mu_y[np.newaxis, :])
+    return (cov / np.dot(s_x[:, np.newaxis], s_y[np.newaxis, :]))[0]
+
+# correlation_top_pathways.py
+# kw_top_pathways.py
+def compute_p_val(r, n):
+    '''
+    Given a Pearson correlation coefficient and a sample size, compute the p-
+    value corresponding to that coefficient.
+    '''
+    df = n - 2
+    if abs(r) == 1.0:
+        prob = 0.0
+    else:
+        t_squared = r**2 * (df / ((1.0 - r) * (1.0 + r)))
+        prob = betai(0.5*df, 0.5, df/(df+t_squared))
+    return prob
+
+# lincs_top_pathways.py
+def get_lincs_genes():
+    '''
+    Each line of all_map.txt is %s\t%s\n. The second item is the LINCS gene.
+    Returns a list of genes -> list(str)
+    '''
+    lincs_genes = []
+    f = open('./data/all_map.txt', 'r')
+    for line in f:
+        lincs_genes += [line.split()[1]]
+    f.close()
+    return lincs_genes
+
+def get_drugs_and_gene_matrix():
+    '''
+    Reads the LINCS data, and returns a (list, list) tuple.
+    list_0: list of drug names -> list(str)
+    list_1: 2D list of pre-normalization z-scores -> list(list(str))
+    Each row of list_1 corresponds to a gene in list_0.
+    '''
+    f = open('./data/new_lvl4_Stuart_combinedPvalue_diff_normalize_DMSO.txt',
+        'r')
+    drugs, gene_matrix = [], []
+    for line in f:
+        line = line.split()
+        drug, raw_z_scores = line[0], line[1:]
+        drugs += [drug]
+        gene_matrix += [raw_z_scores]
+    f.close()
+    return drugs, gene_matrix

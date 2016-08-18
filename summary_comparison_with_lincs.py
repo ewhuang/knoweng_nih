@@ -59,7 +59,9 @@ if __name__ == '__main__':
 
     # File name for all files.
     base_fname = 'compare_lincs_Aft_3_and_'
-    correlation_fname = base_fname + 'correlation_hgnc.txt'
+    ### TODO
+    # Filename can either be correlation_hgnc.txt or kw.txt
+    correlation_fname = base_fname + 'kw.txt'
     
     print 'Currently not comparing L1...'
 
@@ -96,7 +98,7 @@ if __name__ == '__main__':
 
     out = open('%s%s%g/best_files.txt' % (main_folder, subfolder,
         comparison_p_thresh), 'w')
-    out.write('filename\tnum_better_than_correlation\n')
+    out.write('filename\tnum_better_than_kw\n')
     # Get the embedding summaries.
     for method in ['genetic', 'literome', 'sequence','ppi']:
         dimensions = map(str, [50, 100, 500])

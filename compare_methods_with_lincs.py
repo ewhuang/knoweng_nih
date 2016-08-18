@@ -11,6 +11,7 @@ import time
 ### level 4 LINCS data by finding the size of the intersection of genes that
 ### have p-values below 0.0001, 0.001, 0.01, and 0.05. Computes the Fisher's
 ### test on these intersections, differentiating between cell lines and drugs.
+### Run time: 1 minute.
 
 embedding_methods = ['ppi', 'genetic', 'literome', 'sequence']
 p_thresh_range = [0.001, 0.005, 0.01, 0.05, 0.1]
@@ -136,12 +137,12 @@ def compare_methods(method, in_filename, out_filename):
 
 def main():
     if (len(sys.argv) < 3):
-        print "Usage: " + sys.argv[0] + " correlation/corrkw/ppi/genetic/literome/sequence TOP_K"
+        print "Usage: " + sys.argv[0] + " correlation/kw/ppi/genetic/literome/sequence TOP_K"
         exit(1)
     method = sys.argv[1]
     top_k = int(sys.argv[2])
 
-    assert (method in ['correlation', 'corrkw'] + embedding_methods)
+    assert (method in ['correlation', 'kw'] + embedding_methods)
 
     dimensions = map(str, [50, 100, 500])
     if method in embedding_methods:
@@ -157,9 +158,9 @@ def main():
         out_filename = './results/lincs_comparison_files/compare_lincs_Aft_3_and_correlation_hgnc.txt'
         compare_methods(method, corr_fname, out_filename)
     # corrression top pathways computed with Krusakl-Wallis
-    elif method == 'corrkw':
-        in_filename = './results/top_pathways_corr_kw.txt'
-        out_filename = './results/lincs_comparison_files/compare_lincs_Aft_3_and_corr_kw.txt'
+    elif method == 'kw':
+        in_filename = './results/top_pathways_kw.txt'
+        out_filename = './results/lincs_comparison_files/compare_lincs_Aft_3_and_kw.txt'
         compare_methods(method, in_filename, out_filename)
 
 if __name__ == '__main__':

@@ -16,6 +16,7 @@ import time
 ### for a drug, taking the cosine similarity between the pathway and the
 ### gene vectors in the embedding file, multiplied by the correlation between
 ### the gene and drug response for the drug.
+### Run time:
 
 def create_dimension_list(network):
     '''
@@ -105,7 +106,8 @@ def compute_drug_path_score(drug, gene_p_val_dct, entity_vector_dct,
             gene_drug_corr = gene_p_val_dct[gene]
             # cos = cosine_dct[gene]
             cos = cosine_matrix[path_i, gene_i]
-            # drug_path_score += abs(cos * gene_drug_corr)
+            # TODO
+            # drug_path_score += abs(cos) * gene_drug_corr
             drug_path_score += cos * gene_drug_corr
         drug_path_score_dct[(drug, pathway)] = drug_path_score
     return drug_path_score_dct
