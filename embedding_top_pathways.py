@@ -5,7 +5,7 @@ import file_operations
 import math
 import numpy as np
 import operator
-from scipy import spatial, linalg
+from scipy import linalg
 import sys
 import time
 
@@ -16,7 +16,7 @@ import time
 ### for a drug, taking the cosine similarity between the pathway and the
 ### gene vectors in the embedding file, multiplied by the correlation between
 ### the gene and drug response for the drug.
-### Run time:
+### Run time: 2 hours.
 
 def create_dimension_list(network):
     '''
@@ -112,8 +112,7 @@ def compute_drug_path_score(drug, gene_p_val_dct, entity_vector_dct,
         drug_path_score_dct[(drug, pathway)] = drug_path_score
     return drug_path_score_dct
 
-def write_top_pathway_file(network, extension, top_k, drug_path_score_dct,
-    subfolder, out_fname):
+def write_top_pathway_file(drug_path_score_dct, subfolder, out_fname):
     out = open(subfolder + out_fname, 'w')
     out.write('filler\ndrug\tpath\tscore\n')
     for (drug, pathway), score in drug_path_score_dct:
@@ -125,9 +124,6 @@ def write_top_pathway_file(network, extension, top_k, drug_path_score_dct,
 def write_inverse_rankings(subfolder, filename):   
     brd_drug_to_name_dct = file_operations.get_brd_drug_to_name_dct()
 
-    # print 'Taking out top 20 global pathways'
-    # top_global_pathways = file_operations.get_top_global_pathways()[:20]
-
     drug_path_dct = {}
     f = open(subfolder + filename, 'r')
     for i, line in enumerate(f):
@@ -137,8 +133,6 @@ def write_inverse_rankings(subfolder, filename):
         line = line.strip().split('\t')
         assert len(line) == 3
         drug, path, score = line
-        # if path in top_global_pathways:
-        #     continue
         drug_path_dct[(drug, path)] = float(score)
     f.close()
 
@@ -160,6 +154,9 @@ def write_inverse_rankings(subfolder, filename):
     out.close()
 
 def find_top_pathways(network, top_k):
+    '''
+    Main function.
+    '''
     # Extract the NCI pathway data.
     nci_path_dct, nci_genes = file_operations.get_nci_path_dct()
     # Find genes and pathways that appear in embedding.
@@ -190,16 +187,14 @@ def find_top_pathways(network, top_k):
             
             subfolder = './results/embedding/'
 
-            out_fname = '%s_top_pathways_%s_top_%d.txt' % (network, extension,
+            out_fname = '%s_top_pathways_%s_embed%d.txt' % (network, extension,
                 top_k)
-            write_top_pathway_file(network, extension, top_k,
-                drug_path_score_dct, subfolder, out_fname)
-
+            write_top_pathway_file(drug_path_score_dct, subfolder, out_fname)
             write_inverse_rankings(subfolder, out_fname)
 
 def main():
     if (len(sys.argv) != 3):
-        print "Usage: " + sys.argv[0] + " ppi/genetic/literome/sequence top_k"
+        print "Usage: " + sys.argv[0] + " dca_network top_k"
         exit(1)
     network = sys.argv[1]
     assert network in ['ppi', 'genetic', 'literome', 'sequence']

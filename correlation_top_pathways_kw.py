@@ -4,7 +4,6 @@ import file_operations
 import numpy as np
 import operator
 from scipy.stats.mstats import kruskalwallis
-from scipy.stats.stats import pearsonr
 import time
 
 ### Find the top genes for each drug from gene expression.
@@ -12,8 +11,7 @@ import time
 ### to find most similar pathways.
 ### Run time: 3.4 hours.
 
-# The maximum p-value to for Pearson's between drug response and gene expression
-# to allow to be a significantly correlated gene for a drug.
+# This variable is for counting purposes, only.
 KRUSKAL_P_THRESH = 0.05
 
 def get_gene_drug_correlations(drug, drug_response_vector, gene_expression_dct):
@@ -45,6 +43,8 @@ def get_gene_drug_correlations(drug, drug_response_vector, gene_expression_dct):
     gene_drug_correlation_dct = {}
     for i, gene in enumerate(gene_map_list):
         pcc, p_value = r[i], p[i]
+        # We keep all p-values here because KW needs them. correlation_top_
+        # pathways.py has a threshold because of Fisher's test.
         gene_drug_correlation_dct[(gene, drug, pcc)] = p_value
     return gene_drug_correlation_dct
 
@@ -91,16 +91,13 @@ def write_gene_drug_correlations(gene_drug_correlations):
     Write to file all significant gene-drug correlations and their p-values.
     '''
     # Sort the top genes by value. Get the top genes.
-    gene_out = open('./results/top_genes_kw.txt', 'w')
+    gene_out = open('./results/correlation_top_genes_kw.txt', 'w')
     gene_out.write('gene\tdrug\tcorrelation\tp_value\n')
     # gene_out.write('gene\tdrug\tcorrelation\n')
     gene_drug_correlations = sorted(gene_drug_correlations.items(),
         key=operator.itemgetter(1))
-    # TODO
     for (gene, drug, pcc), p_value in gene_drug_correlations:
         gene_out.write('%s\t%s\t%f\t%g\n' % (gene, drug, pcc, p_value))
-    # for (gene, drug), pcc in gene_drug_correlations:
-    #     gene_out.write('%s\t%s\t%f\n' % (gene, drug, pcc))
     gene_out.close()
 
 def write_drug_path_correlations(drug_path_p_values, num_low_p):
@@ -111,28 +108,29 @@ def write_drug_path_correlations(drug_path_p_values, num_low_p):
     top_paths = sorted(drug_path_p_values.items(), key=operator.itemgetter(1))
 
     # Write out the results.
-    path_out = open('./results/top_pathways_kw.txt', 'w')
+    path_out = open('./results/correlation_top_pathways_kw.txt', 'w')
     path_out.write('num_below_%f\t%d\n' % (KRUSKAL_P_THRESH, num_low_p))
-    path_out.write('drug\tpath\th_statistic\tp_value\n')    
+    path_out.write('drug\tpath\tp_value\th_statistic\n')    
     for (drug, path, h_stat), p_val in top_paths:
         path_out.write('%s\t%s\t%g\t%g\n' % (drug, path, p_val, h_stat))
     path_out.close()
 
-def write_genes_pathways():
+def write_top_pathways():
+    '''
+    The main function.
+    '''
     nci_path_dct, nci_genes = file_operations.get_nci_path_dct()
     drug_response_dct = file_operations.get_drug_response_dct()
 
     gene_drug_correlations = {}
-    # Dictionary of the top drug-pathway pairs.
+    # Key: (drug, path, h-statistic). Value: p-value of KW test between drug's
+    # correlated genes and path's correlated genes.
     drug_path_p_values = {}
     # Counts the number of drug-pathway pairs with KW p-value KRUSKAL_P_THRESH.
-    num_low_p = 0
-
-    progress_counter = 0
-    num_drugs = float(len(drug_response_dct))
+    num_low_p, num_drugs = 0, float(len(drug_response_dct))
 
     for drug in drug_response_dct:
-        # Fetch this repeatedly because of deep copy issues with del[].
+        # Fetch this repeatedly because of deep copy issues with del.
         gene_expression_dct = file_operations.get_gene_expression_dct()
         
         drug_response_vector = drug_response_dct[drug]
@@ -155,15 +153,11 @@ def write_genes_pathways():
         drug_path_p_values.update(curr_drug_path_p_values)
         num_low_p += curr_num_low_p
 
-        progress_counter += 1.0
-        print 'Progress: %f%%' % (progress_counter / num_drugs * 100)
-
     write_drug_path_correlations(drug_path_p_values, num_low_p)
     write_gene_drug_correlations(gene_drug_correlations)
 
 def main():
-    # Write the top pathways for gene expression and mutation.
-    write_genes_pathways()
+    write_top_pathways()
 
 if __name__ == '__main__':
     start_time = time.time()

@@ -10,10 +10,11 @@ import time
 
 ### Gets the top pathways for each drug/cell-line using the LINCS data set.
 ### Usage: python top_pathways_lincs.py
-### Run time: 62 minutes
+### Run time: 50 minutes
 
+# This variable doesn't affect the code. It is just helps count low p-values
+# for eyeballing purposes.
 LOW_P_THRESHOLD = 0.0001 # Count how many pathway-drug pairs are below this.
-neg_inf = float('-inf') # Define -infinity
 
 def get_gene_to_z_dct(gene_matrix, drugs, lincs_genes):
     '''
@@ -34,6 +35,7 @@ def get_gene_to_z_dct(gene_matrix, drugs, lincs_genes):
             continue
 
         # Take the absolute value of the z-scores.
+        neg_inf = float('-inf')
         gene_z_scores = [neg_inf if score == '#NAME?' else abs(float(score)
             ) for score in gene_z_scores]
         if gene not in gene_to_z_dct:
@@ -46,7 +48,7 @@ def get_gene_to_z_dct(gene_matrix, drugs, lincs_genes):
 
 def get_drug_to_z_dct(drugs, gene_to_z_dct):
     '''
-    Returns a dictionary.
+    Returns a dictionary mapping drugs to their LINCS z-scores.
     Key: drug -> str
     Value: list of LINCS z-scores -> list(float)
     '''
@@ -57,6 +59,7 @@ def get_drug_to_z_dct(drugs, gene_to_z_dct):
     gene_to_z_dct.clear()
     drug_to_z_dct = zip(*drug_to_z_dct)
 
+    # Make a new dictionary and reconstruct the drug to z-score mappings.
     temp_drug_to_z_dct = OrderedDict({})
     for row in drug_to_z_dct:
         drug, z_scores = row[0], row[1:]
@@ -69,10 +72,10 @@ def get_drug_to_z_dct(drugs, gene_to_z_dct):
             temp_drug_to_z_dct[drug] = [z_scores]
     return temp_drug_to_z_dct
 
-def get_drug_to_top_genes_dct(drug_to_z_dct, z_score_min, lincs_genes,
-    max_genes_per_drug):
+def get_drug_to_top_genes_dct(drug_to_z_dct, lincs_genes):
     '''
-    Takes the drug to z-score dictionary and returns a new dictionary.
+    Takes the drug to z-score dictionary and returns a new dictionary. The
+    higher the z-score, the more correlated the drug and the gene are.
     Key: drug -> str
     Value: list of genes with the highest z-scores, maximum max_genes_per_drug
                 -> list(str)
@@ -83,7 +86,7 @@ def get_drug_to_top_genes_dct(drug_to_z_dct, z_score_min, lincs_genes,
         # Average the z-scores for different experiments of the same drug-cell
         # line pair.
         z_scores = [np.mean(x) for x in zip(*z_scores)]
-        # z_scores = [mean(x) for x in zip(*z_scores)]
+
         top_gene_indices = []
         for i, z_score in enumerate(z_scores):
             if z_score >= z_score_min:
@@ -106,9 +109,8 @@ def compute_top_pathways_per_drug(lincs_genes, drug_top_genes_dct):
     nci_path_dct, nci_genes = file_operations.get_nci_path_dct()
 
     # Fisher's test for every drug/cell-line and path pair.
-    total_num_genes = len(nci_genes.union(lincs_genes))
-    fish_dct = {}
-    num_low_p = 0
+    gene_universe = len(nci_genes.union(lincs_genes))
+    fisher_p_val_dct, num_low_p = {}, 0
     for drug in drug_top_genes_dct:
         # Genes with the top z-scores for each drug, up to max_genes_per_drug.
         corr_genes = set(drug_top_genes_dct[drug])
@@ -119,7 +121,7 @@ def compute_top_pathways_per_drug(lincs_genes, drug_top_genes_dct):
             corr_and_path = len(corr_genes.intersection(path_genes))
             corr_not_path = len(corr_genes.difference(path_genes))
             path_not_corr = len(path_genes.difference(corr_genes))
-            neither = total_num_genes - len(corr_genes.union(path_genes))
+            neither = gene_universe - len(corr_genes.union(path_genes))
             # Compute Fisher's test.
             f_table = ([[corr_and_path, corr_not_path], [path_not_corr,
                 neither]])
@@ -127,35 +129,34 @@ def compute_top_pathways_per_drug(lincs_genes, drug_top_genes_dct):
             if p_value < LOW_P_THRESHOLD:
                 num_low_p += 1
             fkey = (drug, path, corr_and_path, corr_not_path, path_not_corr)
-            fish_dct[fkey] = p_value
-    sorted_fisher = sorted(fish_dct.items(), key=operator.itemgetter(1))
+            fisher_p_val_dct[fkey] = p_value
+    sorted_fisher = sorted(fisher_p_val_dct.items(), key=operator.itemgetter(1))
 
     return sorted_fisher, num_low_p
 
-def write_top_pathways(sorted_fisher, num_low_p, z_score_min,
-    max_genes_per_drug):
+def write_top_pathways(sorted_fisher, num_low_p):
     # Write how many drug-pathway pairs have a very low p-value, determined by
     # LOW_P_THRESHOLD.
     subfolder = './results/lincs_top_pathway_files'
-    out = open('%s/top_pathways_lincs_z%d_max%d.txt' % (subfolder, z_score_min,
+    out = open('%s/top_pathways_lincs_z%g_max%d.txt' % (subfolder, z_score_min,
         max_genes_per_drug), 'w')
     out.write('num_p_below_%s\t%d\n' % (str(LOW_P_THRESHOLD), num_low_p))
     # Write the drug's top pathways to file.
     out.write('drug\tcell_line\tpath\tp-value\tinter\tlincs_len\tpath_len\n')
-    for fkey, score in sorted_fisher:
+    for fkey, p_val in sorted_fisher:
         drug, path, inter, corr_len, path_len = fkey
         drug, cell_line = drug.split('_')
-        out.write('%s\t%s\t%s\t' % (drug, cell_line, path))
-        out.write('%g\t%d\t%d\t%d\n' % (score, inter, corr_len, path_len))
+        out.write('%s\t%s\t%s\t%g\t%d\t%d\t%d\n' % (drug, cell_line, path,
+            p_val, inter, corr_len, path_len))
     out.close()
 
 def main():
     if (len(sys.argv) < 3):
         print "Usage: " + sys.argv[0] + " z_score_min max_genes_per_drug"
         exit(1)
-    # Original runs were 2 and 250, respectively
-    z_score_min = int(sys.argv[1])
-    max_genes_per_drug = int(sys.argv[2])
+
+    global z_score_min, max_genes_per_drug
+    z_score_min, max_genes_per_drug = float(sys.argv[1]), int(sys.argv[2])
 
     lincs_genes = file_operations.get_lincs_genes()
     drugs, gene_matrix = file_operations.get_drugs_and_gene_matrix()
@@ -172,14 +173,12 @@ def main():
 
     drug_to_z_dct = get_drug_to_z_dct(drugs, gene_to_z_dct)
 
-    drug_top_genes_dct = get_drug_to_top_genes_dct(drug_to_z_dct, z_score_min,
-        lincs_genes, max_genes_per_drug)
+    drug_top_genes_dct = get_drug_to_top_genes_dct(drug_to_z_dct, lincs_genes)
 
     sorted_fisher, num_low_p = compute_top_pathways_per_drug(lincs_genes,
         drug_top_genes_dct)
 
-    write_top_pathways(sorted_fisher, num_low_p, z_score_min,
-        max_genes_per_drug)
+    write_top_pathways(sorted_fisher, num_low_p)
 
 if __name__ == '__main__':
     start_time = time.time()

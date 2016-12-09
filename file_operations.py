@@ -9,6 +9,42 @@ from scipy.stats import betai
 ### This file contains functions that parse the data files and return the 
 ### data objects that we work with in our scripts.
 
+# lincs_top_pathways.py
+def get_lincs_genes():
+    '''
+    Each line of all_map.txt is %s\t%s\n. The second item is the LINCS gene.
+    Returns a list of genes -> list(str)
+    '''
+    lincs_genes = []
+    f = open('./data/all_map.txt', 'r')
+    for line in f:
+        lincs_genes += [line.split()[1]]
+    f.close()
+    return lincs_genes
+
+# lincs_top_pathways.py
+def get_drugs_and_gene_matrix():
+    '''
+    Reads the LINCS data, and returns a (list, list) tuple.
+    list_0: list of drug names -> list(str)
+    list_1: 2D list of pre-normalization z-scores -> list(list(str))
+    Each row of list_1 corresponds to a gene in list_0.
+    '''
+    f = open('./data/new_lvl4_Stuart_combinedPvalue_diff_normalize_DMSO.txt',
+        'r')
+    drugs, gene_matrix = [], []
+    for line in f:
+        line = line.split()
+        drug, raw_z_scores = line[0], line[1:]
+        drugs += [drug]
+        gene_matrix += [raw_z_scores]
+    f.close()
+    return drugs, gene_matrix
+
+# lincs_top_pathways.py
+# correlation_top_pathways_fisher.py
+# correlation_top_pathways_kw.py
+# embedding_top_pathways.py
 def get_nci_path_dct():
     '''
     Returns a (dictionary, set) pair.
@@ -31,11 +67,14 @@ def get_nci_path_dct():
             nci_path_dct[pathway_name] = [gene]
     path_file.close()
 
+    # Flatten the values in the dictionary to get the set of all NCI genes.
     nci_gene_set = set([gene for pathway in nci_path_dct.values(
         ) for gene in pathway])
 
     return nci_path_dct, nci_gene_set
 
+# correlation_top_pathways_fisher.py
+# correlation_top_pathways_kw.py
 def get_drug_response_dct():
     '''
     Returns a dictionary mapping drugs to drug response values.
@@ -62,6 +101,8 @@ def get_drug_response_dct():
     resp_file.close()
     return drug_response_dct
 
+# correlation_top_pathways_fisher.py
+# correlation_top_pathways_kw.py
 def get_gene_expression_dct():
     '''
     Returns a dictionary mapping genes to gene expression values.
@@ -84,14 +125,21 @@ def get_gene_expression_dct():
     exp_file.close()
     return gene_expression_dct
 
-# Get the top pathways for LINCS. Keys are (drug, pathway) tuples, and values
-# are floats of the p-values.
-def min_p_exp(p_val_lst):
-    return 1 - math.pow((1 - min(p_val_lst)), len(p_val_lst))
-def get_lincs_drug_path_dct():
-    # print 'Extracting level 4 LINCS top pathways...'
-    f = open('./results/new_top_pathways_lincs_diff_normalize_DMSO.txt', 'r')
+# def min_p_exp(p_val_lst):
+#     return 1 - math.pow((1 - min(p_val_lst)), len(p_val_lst))
+
+# compare_methods_with_lincs.py
+def get_lincs_drug_path_dct(lincs_z, lincs_max_num):
+    '''
+    Returns a dictionary.
+    Key: (drug, pathway) pairs -> (str, str)
+    Value: p-values of the Fisher's test for LINCS -> float
+    '''
+    subfolder = './results/lincs_top_pathway_files'    
     lincs_drug_path_dct = {}
+
+    f = open('%s/top_pathways_lincs_z%s_max%s.txt' % (subfolder, lincs_z,
+        lincs_max_num), 'r')
     for i, line in enumerate(f):
         # Skip header lines.
         if i < 2:
@@ -108,31 +156,32 @@ def get_lincs_drug_path_dct():
     for (drug, path) in lincs_drug_path_dct:
         p_val_lst = lincs_drug_path_dct[(drug, path)]
         # Change the function for other aggregation functions.
-        lincs_drug_path_dct[(drug, path)] = min_p_exp(p_val_lst)
+        # lincs_drug_path_dct[(drug, path)] = min_p_exp(p_val_lst)
+        lincs_drug_path_dct[(drug, path)] = min(p_val_lst)
     return lincs_drug_path_dct
 
-def get_lincs_drug_path_dct_kw():
-    # print 'Extracting level 4 LINCS top pathways...'
-    f = open('./results/top_pathways_lincs_diff_normalize_DMSO_kw.txt', 'r')
-    lincs_drug_path_dct = {}
-    for i, line in enumerate(f):
-        # Skip header lines.
-        if i < 2:
-            continue
-        drug, cell_line, path, score = line.strip().split('\t')[:4]
-        # Add the drug-pathway p-value to the dictionary.
-        score = float(score)
-        if (drug, path) in lincs_drug_path_dct:
-            lincs_drug_path_dct[(drug, path)] += [score]
-        else:
-            lincs_drug_path_dct[(drug, path)] = [score]
-    f.close()
-    # Aggregate p-values by cell lines.
-    for (drug, path) in lincs_drug_path_dct:
-        p_val_lst = lincs_drug_path_dct[(drug, path)]
-        # Change the function for other aggregation functions.
-        lincs_drug_path_dct[(drug, path)] = min_p_exp(p_val_lst)
-    return lincs_drug_path_dct
+# def get_lincs_drug_path_dct_kw():
+#     # print 'Extracting level 4 LINCS top pathways...'
+#     f = open('./results/top_pathways_lincs_diff_normalize_DMSO_kw.txt', 'r')
+#     lincs_drug_path_dct = {}
+#     for i, line in enumerate(f):
+#         # Skip header lines.
+#         if i < 2:
+#             continue
+#         drug, cell_line, path, score = line.strip().split('\t')[:4]
+#         # Add the drug-pathway p-value to the dictionary.
+#         score = float(score)
+#         if (drug, path) in lincs_drug_path_dct:
+#             lincs_drug_path_dct[(drug, path)] += [score]
+#         else:
+#             lincs_drug_path_dct[(drug, path)] = [score]
+#     f.close()
+#     # Aggregate p-values by cell lines.
+#     for (drug, path) in lincs_drug_path_dct:
+#         p_val_lst = lincs_drug_path_dct[(drug, path)]
+#         # Change the function for other aggregation functions.
+#         lincs_drug_path_dct[(drug, path)] = min_p_exp(p_val_lst)
+#     return lincs_drug_path_dct
 
 # Get the superdrug's p-values for all the pathways.
 def get_superdrug_pathway_p_values():
@@ -162,8 +211,13 @@ def get_top_global_pathways():
 
     return top_global_pathways
 
-# Dictionary where keys are BRD drug id's, and values are the common names.
+# embedding_top_pathways.py
 def get_brd_drug_to_name_dct():
+    '''
+    Returns a dictionary mapping BRD drug ID's to their common English names.
+    Key: BRD ID -> str
+    Value: common drug name -> str
+    '''
     brd_drug_to_name_dct = {}
     f = open('./data/brd_to_name.txt', 'r')
     for i, line in enumerate(f):
@@ -179,6 +233,7 @@ def get_brd_drug_to_name_dct():
     f.close()
     return brd_drug_to_name_dct
 
+# embedding_top_pathways.py
 def get_embedding_gene_pathway_lst():
     '''
     Returns a list of 'entities' that appear in the embedding data. Entities
@@ -192,6 +247,7 @@ def get_embedding_gene_pathway_lst():
     f.close()
     return embedding_gene_pathway_lst
 
+# embedding_top_pathways.py
 def get_corr_drug_top_genes(top_k, embedding_gene_pathway_lst):
     '''
     Returns a dictionary finding top correlated genes for each drug.
@@ -201,7 +257,7 @@ def get_corr_drug_top_genes(top_k, embedding_gene_pathway_lst):
     '''
     embedding_and_expression_genes = set([])
     drug_top_genes_dct = {}
-    f = open('./results/top_genes_correlation_hgnc.txt', 'r')
+    f = open('./results/correlation_top_genes_kw.txt', 'r')
     for i, line in enumerate(f):
         if i == 0:
             continue
@@ -221,7 +277,7 @@ def get_corr_drug_top_genes(top_k, embedding_gene_pathway_lst):
             drug_top_genes_dct[drug][gene] = correlation
     f.close()
 
-    # Check that each drug has exactly top_k number of genes.
+    # Check that each drug has at most top_k genes.
     for drug in drug_top_genes_dct:
         assert len(drug_top_genes_dct[drug]) <= top_k
 
@@ -242,8 +298,8 @@ def get_corr_drug_random_genes(top_k, embedding_gene_pathway_lst):
 
     return embedding_and_expression_genes[:top_k]
 
-# correlation_top_pathways.py
-# kw_top_pathways.py
+# correlation_top_pathways_fisher.py
+# correlation_top_pathways_kw.py
 def generate_correlation_map(x, y):
     '''
     Correlate each n with each m, where x is an N x T matrix, and y is an M x T
@@ -262,8 +318,8 @@ def generate_correlation_map(x, y):
                                   mu_y[np.newaxis, :])
     return (cov / np.dot(s_x[:, np.newaxis], s_y[np.newaxis, :]))[0]
 
-# correlation_top_pathways.py
-# kw_top_pathways.py
+# correlation_top_pathways_fisher.py
+# correlation_top_pathways_kw.py
 def compute_p_val(r, n):
     '''
     Given a Pearson correlation coefficient and a sample size, compute the p-
@@ -276,34 +332,3 @@ def compute_p_val(r, n):
         t_squared = r**2 * (df / ((1.0 - r) * (1.0 + r)))
         prob = betai(0.5*df, 0.5, df/(df+t_squared))
     return prob
-
-# lincs_top_pathways.py
-def get_lincs_genes():
-    '''
-    Each line of all_map.txt is %s\t%s\n. The second item is the LINCS gene.
-    Returns a list of genes -> list(str)
-    '''
-    lincs_genes = []
-    f = open('./data/all_map.txt', 'r')
-    for line in f:
-        lincs_genes += [line.split()[1]]
-    f.close()
-    return lincs_genes
-
-def get_drugs_and_gene_matrix():
-    '''
-    Reads the LINCS data, and returns a (list, list) tuple.
-    list_0: list of drug names -> list(str)
-    list_1: 2D list of pre-normalization z-scores -> list(list(str))
-    Each row of list_1 corresponds to a gene in list_0.
-    '''
-    f = open('./data/new_lvl4_Stuart_combinedPvalue_diff_normalize_DMSO.txt',
-        'r')
-    drugs, gene_matrix = [], []
-    for line in f:
-        line = line.split()
-        drug, raw_z_scores = line[0], line[1:]
-        drugs += [drug]
-        gene_matrix += [raw_z_scores]
-    f.close()
-    return drugs, gene_matrix

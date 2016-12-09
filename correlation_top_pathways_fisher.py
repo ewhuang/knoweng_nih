@@ -1,11 +1,8 @@
 ### Author: Edward Huang
 
-import cPickle as pickle
 import file_operations
-import json
 import numpy as np
 import operator
-from scipy.stats import pearsonr, betai
 from scipy.stats import fisher_exact
 import time
 
@@ -75,7 +72,7 @@ def get_drug_path_fisher_dct(drug, gene_universe, corr_genes, nci_path_dct):
 
         # o_r = odds ratio.
         o_r, p_value = fisher_exact([[corr_and_path, corr_not_path], 
-            [path_not_corr, neither]])
+            [path_not_corr, neither]], alternative='greater')
         
         # Count the number of significant p-values.
         if p_value < FISHER_P_THRESH:
@@ -90,7 +87,7 @@ def write_gene_drug_correlations(gene_drug_correlations):
     Write to file all significant gene-drug correlations and their p-values.
     '''
     # Sort the top genes by value. Get the top genes.
-    gene_out = open('./results/top_genes_correlation_hgnc.txt', 'w')
+    gene_out = open('./results/correlation_top_genes_fisher.txt', 'w')
     gene_out.write('gene\tdrug\tcorrelation\tp_value\n')
     # gene_out.write('gene\tdrug\tcorrelation\n')
     gene_drug_correlations = sorted(gene_drug_correlations.items(),
@@ -110,7 +107,7 @@ def write_drug_path_correlations(drug_path_p_values, num_low_p):
     sorted_drug_path_p_values = sorted(drug_path_p_values.items(),
         key=operator.itemgetter(1))
 
-    path_out = open('./results/top_pathways_correlation_hgnc.txt', 'w')
+    path_out = open('./results/correlation_top_pathways_fisher.txt', 'w')
     path_out.write('num_below_%f\t%d\n' % (FISHER_P_THRESH, num_low_p))
     path_out.write('drug\tpath\tp_value\tinter\tcorr\tpath\tneither\n')    
     for key, p_val in sorted_drug_path_p_values:
