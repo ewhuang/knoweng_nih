@@ -42,10 +42,10 @@ def get_drugs_and_gene_matrix():
     return drugs, gene_matrix
 
 # lincs_top_pathways.py
-# correlation_top_pathways_fisher.py
+# drug_pathway_fisher_correlation.py
 # correlation_top_pathways_kw.py
 # embedding_top_pathways.py
-def get_nci_path_dct():
+def get_path_to_gene_dct():
     '''
     Returns a (dictionary, set) pair.
     Dictionary: the NCI pathways in the form of a dictionary. Each key is the
@@ -54,76 +54,89 @@ def get_nci_path_dct():
     Set: All genes that appear in all pathways.
     '''
     # Pair to return.
-    nci_path_dct = {}
+    path_to_gene_dct, nci_gene_set = {}, set([])
 
     path_file = open('./data/nci_pathway_hgnc.txt', 'r')
     for line in path_file:
-        pathway_name, gene = line.strip().split('\t')
-        
+        pathway_name, gene = line.strip().split('\t')        
         # Update pathway in the dictionary.
-        if pathway_name in nci_path_dct:
-            nci_path_dct[pathway_name] += [gene]
-        else:
-            nci_path_dct[pathway_name] = [gene]
+        if pathway_name not in path_to_gene_dct:
+            path_to_gene_dct[pathway_name] = set([])
+        path_to_gene_dct[pathway_name].add(gene)
+        nci_gene_set.add(gene)
     path_file.close()
 
-    # Flatten the values in the dictionary to get the set of all NCI genes.
-    nci_gene_set = set([gene for pathway in nci_path_dct.values(
-        ) for gene in pathway])
+    return path_to_gene_dct, nci_gene_set
 
-    return nci_path_dct, nci_gene_set
-
-# correlation_top_pathways_fisher.py
+# drug_pathway_fisher_correlation.py
 # correlation_top_pathways_kw.py
-def get_drug_response_dct():
+def get_drug_to_dr_dct():
     '''
     Returns a dictionary mapping drugs to drug response values.
     Key: drug -> str
     Value: list of drug responses for the drug key -> list(float)
     '''
-    drug_response_dct = OrderedDict({})
+    drug_to_dr_dct = OrderedDict({})
     resp_file = open('./data/auc_hgnc.tsv', 'r')
     for i, line in enumerate(resp_file):
+        line = line.split()
         # Header line contains patient ID's.
         if i == 0:
-            patient_id_list = line.split()[1:]
+            patient_id_list = line[1:]
             continue
         # Each row is one drug's performance on each patient.
-        line = line.split()
         drug, resp_line = line[0], line[1:]
+        # Skip drugs that are unavailable for all patients.
+        if resp_line == ['NA'] * len(patient_id_list):
+            continue
         assert len(resp_line) == len(patient_id_list)
         assert 'BRD-' in drug
-        # Convert 'NA' strings to None values.
-        resp_line = [None if resp == 'NA' else float(resp
-            ) for resp in resp_line]
-        assert drug not in drug_response_dct
-        drug_response_dct[drug] = resp_line
+        # Convert 'NA' strings to -666.
+        resp_line = [-666 if val == 'NA' else float(val) for val in resp_line]
+        assert drug not in drug_to_dr_dct
+        drug_to_dr_dct[drug] = np.array(resp_line)
     resp_file.close()
-    return drug_response_dct
+    return drug_to_dr_dct
 
-# correlation_top_pathways_fisher.py
+# drug_pathway_fisher_correlation.py
 # correlation_top_pathways_kw.py
-def get_gene_expression_dct():
+def get_gene_expr_mat():
     '''
     Returns a dictionary mapping genes to gene expression values.
     Key: gene -> str
     Value: list of gene expression values -> list(float)
     '''
-    gene_expression_dct = OrderedDict({})
+    gene_expr_mat, gene_list = [], []
     exp_file = open('./data/gene_expression_hgnc.tsv', 'r')
     for i, line in enumerate(exp_file):
+        line = line.split()
         # Header row contains patient ID's.
         if i == 0:
             # The first item is 'gid'. We skip it.
-            patient_id_list = line.split()[1:]
+            patient_id_list = line[1:]
             continue
-        line = line.split()
-        gene, expression_value_list = line[0], line[1:]
+        gene, expression_value_list = line[0], map(float, line[1:])
         assert len(expression_value_list) == len(patient_id_list)
 
-        gene_expression_dct[gene] = map(float, expression_value_list)
+        # Take care of duplicate genes. Average existing expression rows.
+        if gene in gene_list:
+            # Only 'TTL' is the duplicate.
+            assert gene == 'TTL'
+            dup_idx = gene_list.index(gene)
+            # Average old row with current one.
+            # old_row = gene_expr_mat[dup_idx]
+            # TODO:
+            # mean_row = list(np.mean([expression_value_list, old_row], axis=0))
+            # Update the existing row.
+            # gene_expr_mat[dup_idx] = mean_row
+            gene_expr_mat[dup_idx] = expression_value_list
+        else:
+            # Only add a row and gene if it's a new gene.
+            gene_expr_mat += [expression_value_list]
+            gene_list += [gene]
     exp_file.close()
-    return gene_expression_dct
+    assert len(gene_expr_mat) == len(gene_list)
+    return np.array(gene_expr_mat), gene_list
 
 # def min_p_exp(p_val_lst):
 #     return 1 - math.pow((1 - min(p_val_lst)), len(p_val_lst))
@@ -234,91 +247,87 @@ def get_brd_drug_to_name_dct():
     return brd_drug_to_name_dct
 
 # embedding_top_pathways.py
-def get_embedding_gene_pathway_lst():
+def get_emb_node_lst():
     '''
-    Returns a list of 'entities' that appear in the embedding data. Entities
-    include both genes and pathways.
+    Returns a list of nodes that appear in the embedding data. Entities include
+    both genes and pathways.
     '''
-    embedding_gene_pathway_lst = []
+    emb_node_lst = []
     f = open('./data/embedding/gene_pathway_id.txt', 'r')
     for line in f:
-        # entity is either a gene or a pathway.
-        embedding_gene_pathway_lst += [line.strip()]
+        # Node is either a gene or a pathway.
+        emb_node_lst += [line.strip()]
     f.close()
-    return embedding_gene_pathway_lst
+    return emb_node_lst
 
 # embedding_top_pathways.py
-def get_corr_drug_top_genes(top_k, embedding_gene_pathway_lst):
+def get_drug_corr_genes_dct(top_k, emb_node_lst):
     '''
     Returns a dictionary finding top correlated genes for each drug.
-    Each key is a drug name.
-    Each value is another dictionary. Each key of sub-dictionary is a gene name.
-    Each value is correlation coefficient.
+    Key: drug -> str
+    Value: a nested dictionary -> {}
+        Key: gene -> str
+        Value: Pearson correlation coefficient -> float
+    Also returns set of genes that appear in both embedding and expression data.
     '''
-    embedding_and_expression_genes = set([])
-    drug_top_genes_dct = {}
-    f = open('./results/correlation_top_genes_kw.txt', 'r')
+    all_genes = set([])
+    drug_corr_genes_dct = {}
+
+    f = open('./results/gene_drug_pearson.txt', 'r')
     for i, line in enumerate(f):
-        if i == 0:
+        if i == 0: # Skip header.
             continue
-        gene, drug, correlation, p_val = line.split()
-        if gene not in embedding_gene_pathway_lst:
+        # TODO: no p-value info right now.
+        # gene, drug, correlation, p_val = line.split()
+        gene, drug, correlation = line.split()
+        if gene not in emb_node_lst:
             continue
         # The gene appears in both expression and embedding.
-        embedding_and_expression_genes.add(gene)
-        correlation = float(correlation)
-        if drug not in drug_top_genes_dct:
-            drug_top_genes_dct[drug] = {gene: correlation}
-            assert (len(drug_top_genes_dct[drug]) < top_k)
-        elif len(drug_top_genes_dct[drug]) == top_k:
-            # We have added enough genes for the drug.
+        all_genes.add(gene)
+        # Initialize the dictionary.
+        if drug not in drug_corr_genes_dct:
+            drug_corr_genes_dct[drug] = {}
+        if len(drug_corr_genes_dct[drug]) == top_k:
             continue
-        else:
-            drug_top_genes_dct[drug][gene] = correlation
+        drug_corr_genes_dct[drug][gene] = float(correlation)
     f.close()
 
-    # Check that each drug has at most top_k genes.
-    for drug in drug_top_genes_dct:
-        assert len(drug_top_genes_dct[drug]) <= top_k
+    return all_genes, drug_corr_genes_dct
 
-    return embedding_and_expression_genes, drug_top_genes_dct
-
-def get_corr_drug_random_genes(top_k, embedding_gene_pathway_lst):
+def get_corr_drug_random_genes(top_k, emb_node_lst):
     '''
     Returns a dictionary where each key is a drug, and each value is another
     dictionary d_2, where each key is a gene, and each value is a p-value
     corresponding to the correlation between the drug and the gene. We pick
     top_k random genes for each drug.
     '''
-    gene_expression_dct = get_gene_expression_dct()
-    embedding_and_expression_genes = list(set(embedding_gene_pathway_lst
-        ).intersection(gene_expression_dct.keys()))
+    gene_expr_mat = get_gene_expr_mat()
+    embedding_and_expression_genes = list(set(emb_node_lst
+        ).intersection(gene_expr_mat.keys()))
 
     random.shuffle(embedding_and_expression_genes)
 
     return embedding_and_expression_genes[:top_k]
 
-# correlation_top_pathways_fisher.py
+# drug_pathway_fisher_correlation.py
 # correlation_top_pathways_kw.py
 def generate_correlation_map(x, y):
     '''
     Correlate each n with each m, where x is an N x T matrix, and y is an M x T
     matrix.
+    From: http://stackoverflow.com/questions/30143417/
     '''
     mu_x = x.mean(1)
     mu_y = y.mean(1)
     n = x.shape[1]
     if n != y.shape[1]:
-        raise ValueError('x and y must ' +
-                         'have the same number of timepoints.')
+        raise ValueError('x and y must have the same number of timepoints.')
     s_x = x.std(1, ddof=n - 1)
     s_y = y.std(1, ddof=n - 1)
-    cov = np.dot(x,
-                 y.T) - n * np.dot(mu_x[:, np.newaxis],
-                                  mu_y[np.newaxis, :])
+    cov = np.dot(x, y.T) - n * np.dot(mu_x[:, np.newaxis], mu_y[np.newaxis, :])
     return (cov / np.dot(s_x[:, np.newaxis], s_y[np.newaxis, :]))[0]
 
-# correlation_top_pathways_fisher.py
+# drug_pathway_fisher_correlation.py
 # correlation_top_pathways_kw.py
 def compute_p_val(r, n):
     '''

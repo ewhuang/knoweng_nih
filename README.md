@@ -34,7 +34,7 @@ $ python ensg_to_hgnc_conversion.py
 1.  Finds top pathways for the gene expression data.
 
     ```bash
-    $ python correlation_top_pathways_fisher.py
+    $ python correlation_top_pathways_fisher.py top_k
     $ python correlation_top_pathways_kw.py
     ```
 
@@ -47,10 +47,8 @@ $ python ensg_to_hgnc_conversion.py
     computing a drug-pathway score (line 110).
 
     ```bash
-    $ python embedding_top_pathways.py dca_network top_k
+    $ python embedding_top_pathways.py top_k
     ```
-
-    dca_network in ['ppi', 'genetic', 'literome', 'sequence']
 
     Same format as the other top pathways. However, we can tune the top k
     pathways to keep.
