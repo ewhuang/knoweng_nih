@@ -261,7 +261,7 @@ def get_emb_node_lst():
     return emb_node_lst
 
 # embedding_top_pathways.py
-def get_drug_corr_genes_dct(top_k, emb_node_lst):
+def get_drug_corr_genes_dct(top_k, emb_node_lst, sort_value, pearson_thresh):
     '''
     Returns a dictionary finding top correlated genes for each drug.
     Key: drug -> str
@@ -273,7 +273,8 @@ def get_drug_corr_genes_dct(top_k, emb_node_lst):
     all_genes = set([])
     drug_corr_genes_dct = {}
 
-    f = open('./results/gene_drug_pearson.txt', 'r')
+    f = open('./results/gene_drug_pearson_%s_%g.txt' % (sort_value,
+        pearson_thresh), 'r')
     for i, line in enumerate(f):
         if i == 0: # Skip header.
             continue

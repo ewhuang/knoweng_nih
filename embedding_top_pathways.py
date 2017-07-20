@@ -15,17 +15,6 @@ import time
 ### drug with the gene-pathway cosine similarity scores.
 ### Run time: 6 minutes per embedding file.
 
-# def create_dimension_list(network):
-#     '''
-#     Creates the list of dimensions for which embedding was run. PPI was run open
-#     twice as many dimensions.
-#     '''
-#     dimension_list = [50, 100, 500]
-#     if network == 'ppi':
-#         # We ran more dimensions for the ppi network.
-#         dimension_list += [1000, 1500, 2000]
-#     return map(str, dimension_list)
-
 def get_embedding_dct(dimension, suffix, fraction, emb_node_lst, all_genes,
     path_to_gene_dct):
     '''
@@ -33,17 +22,8 @@ def get_embedding_dct(dimension, suffix, fraction, emb_node_lst, all_genes,
     Key: node (either a gene or a pathway) -> str
     Value: key's corresponding embedding vector -> list(float)
     '''
-    # node_embedding_dct = OrderedDict({})
     node_embedding_dct = {}
 
-    # First, process the input network filename.    
-    # extension = '%s_0.8.%s' % (dimension, suffix)
-    # if network == 'ppi':
-    #     filename = '%sppi_6_net_%s' % (data_folder, extension)
-    # else:
-    #     filename = '%s%s.network_net_%s' % (data_folder, network, extension)
-
-    # TODO: for PPI file.
     if isPpi:
         data_folder = './data/embedding' # With PPI.
         filename = '%s/ppi_6_net_%s_%s.%s' % (data_folder, dimension, fraction,
@@ -65,20 +45,6 @@ def get_embedding_dct(dimension, suffix, fraction, emb_node_lst, all_genes,
         node_embedding_dct[node] = map(float, line.split())
     f.close()
     return node_embedding_dct
-
-# def create_pathway_vector_matrix(nci_pathways, node_embedding_dct):
-#     pathway_vector_matrix = []
-#     for pathway in nci_pathways:
-#         pathway_vec = node_embedding_dct[pathway]
-#         pathway_vector_matrix += [pathway_vec]
-#     return np.matrix(pathway_vector_matrix)
-
-# def create_gene_vector_matrix(expression_genes, node_embedding_dct):
-#     gene_vector_matrix = []
-#     for gene in expression_genes:
-#         gene_vec = node_embedding_dct[gene]
-#         gene_vector_matrix += [gene_vec]
-#     return np.matrix(gene_vector_matrix)
 
 def create_embedding_matrix(node_list, node_embedding_dct):
     '''
@@ -113,14 +79,6 @@ def compute_drug_path_score(drug, gene_p_val_dct, node_embedding_dct,
         path_emb_matrix, axis=1)[:, np.newaxis] / linalg.norm(gene_emb_matrix,
         axis=1)
 
-    # begin TODO
-    # Normalize each column of cosine matrix.
-    # cosine_matrix = cosine_matrix / cosine_matrix.sum(axis=0)
-    # Normalize each row of cosine matrix.
-    # cosine_matrix = np.array(cosine_matrix)
-    # cosine_matrix = cosine_matrix / cosine_matrix.sum(axis=1)[:,None]
-    # end TODO
-
     for path_i, pathway in enumerate(nci_pathways):
         # Initialize the score.
         drug_path_score = 0.0
@@ -128,21 +86,15 @@ def compute_drug_path_score(drug, gene_p_val_dct, node_embedding_dct,
             # Correlation between gene and drug response.
             gene_drug_corr = gene_p_val_dct[gene]
             cos = cosine_matrix[path_i, gene_i]
-            # TODO: ./debug/ppi_top_pathways_50_0.8.U_top_250_new.txt
-            # drug_path_score += abs(cos * gene_drug_corr)
-            drug_path_score += cos * gene_drug_corr
-            # drug_path_score += abs(cos) * gene_drug_corr
-            # drug_path_score += cos * abs(gene_drug_corr)
-            # TODO: testing.
-            # drug_path_score += cos
+            if cos_abs:
+                drug_path_score += abs(cos * gene_drug_corr)
+            else:
+                drug_path_score += cos * gene_drug_corr
         drug_path_score_dct[(drug, pathway)] = drug_path_score
     return drug_path_score_dct
 
 def write_top_pathway_file(drug_path_score_dct, results_folder, out_fname):
-    # TODO: Overriding outfile. Writing in debug folder.
-    # out = open(results_folder + out_fname, 'w')
-    print 'writing out to debug folder...'
-    out = open('./debug/test.txt', 'w')
+    out = open(results_folder + out_fname, 'w')
     # Description of method.
     out.write('cosine * gene_drug_corr, unnormalized')
     out.write('\ndrug\tpath\tscore\n')
@@ -188,7 +140,6 @@ def write_inverse_rankings(results_folder, filename):
         out.write('%s\t%s\t%g\n' % (brd_drug_to_name_dct[drug], path, score))
     out.close()
 
-# def compute_drug_pathway_scores(network, top_k):
 def compute_drug_pathway_scores():
     # Extract the NCI pathway data.
     path_to_gene_dct, nci_genes = file_operations.get_path_to_gene_dct()
@@ -196,9 +147,8 @@ def compute_drug_pathway_scores():
     emb_node_lst = file_operations.get_emb_node_lst()
     # Find the most significantly correlated genes for each drug.
     all_genes, drug_corr_genes_dct = file_operations.get_drug_corr_genes_dct(
-        top_k, emb_node_lst)
+        top_k, emb_node_lst, sort_value, pearson_thresh)
 
-    # TODO
     dimension_list = map(str, [50, 100, 500, 1000])
     fraction_list, suffix_list = map(str, [0.3, 0.5, 0.8]), ['U', 'US']
     if isPpi:
@@ -226,37 +176,35 @@ def compute_drug_pathway_scores():
                 if not os.path.exists(results_folder):
                     os.makedirs(results_folder)
 
-                # out_fname = '%s_top_pathways_%s_embed%d.txt' % (network, extension,
-                    # top_k)
-                # TODO: for PPI file.
-                if isPpi:
-                    out_fname = 'top_pathways_ppi_%s_%s_%s_embed_%d.txt' % (
-                        dimension, fraction, suffix, top_k)
+                input_suffix = '%s_%g' % (sort_value, pearson_thresh)
+                if cos_abs:
+                    input_suffix += '_cosAbs'
                 else:
-                    out_fname = 'top_pathways_%s_%s_%s_embed_%d.txt' % (
-                        dimension, fraction, suffix, top_k)
+                    input_suffix += '_cosNoAbs'
+                if isPpi:
+                    out_fname = 'top_pathways_ppi_%s_%s_%s_embed_%d_%s.txt' % (
+                        dimension, fraction, suffix, top_k, input_suffix)
+                else:
+                    out_fname = 'top_pathways_%s_%s_%s_embed_%d_%s.txt' % (
+                        dimension, fraction, suffix, top_k, input_suffix)
                 write_top_pathway_file(drug_path_score_dct, results_folder,
                     out_fname)
-                # TODO: Currently not writing out inverse rankings.
-                # write_inverse_rankings(results_folder, out_fname)
+
+                write_inverse_rankings(results_folder, out_fname)
 
 def main():
-    # if (len(sys.argv) != 3):
-    if (len(sys.argv) not in [2, 3]):
-        # print "Usage: " + sys.argv[0] + " dca_network top_k"
-        print "Usage: " + sys.argv[0] + " top_k ppi<optional>"
+    if (len(sys.argv) not in [5, 6]):
+        print ('Usage: %s top_k sortCorr/sortP pearson_thresh cos_abs '
+            'ppi<optional>' % (sys.argv[0]))
         exit(1)
-    # network = sys.argv[1]
-    # assert network in ['ppi', 'genetic', 'literome', 'sequence']
-    # top_k = int(sys.argv[2])
-    global isPpi, top_k
-    isPpi = False
+    global isPpi, top_k, sort_value, pearson_thresh, cos_abs
+    isPpi = len(sys.argv) == 6
     top_k = int(sys.argv[1])
-    if len(sys.argv) == 3:
-        isPpi = True
-        assert sys.argv[2] == 'ppi'
+    sort_value = sys.argv[2]
+    assert sort_value in ['sortCorr', 'sortP']
+    pearson_thresh = float(sys.argv[3])
+    cos_abs = sys.argv[4] == 'cos_abs'
     
-    # compute_drug_pathway_scores(network, top_k)
     compute_drug_pathway_scores()
 
 if __name__ == '__main__':
