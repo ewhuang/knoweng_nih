@@ -44,6 +44,14 @@ $ python ensg_to_hgnc_conversion.py
     pathway). Another shows p-values between drugs and genes (Pearson between
     gene expression and drug response).
 
+2.  Make embedding files that only have gene embedding vectors. Kind of a 
+    misnomer. Doesn't add drug embeddings, but rather the missing pathway
+    embeddings.
+
+    ```bash
+    python impute_drugless_embeddings.py
+    ```
+
 2.  Here, we can decide whether to use abs(cos) * corr or just (cos * corr) when
     computing a drug-pathway score (line 110).
 

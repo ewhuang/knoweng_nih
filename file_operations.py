@@ -46,6 +46,7 @@ def get_drugs_and_gene_matrix():
 # drug_pathway_fisher_correlation.py
 # correlation_top_pathways_kw.py
 # embedding_top_pathways.py
+# impute_drugless_embeddings.py
 def get_path_to_gene_dct():
     '''
     Returns a (dictionary, set) pair.
@@ -281,6 +282,7 @@ def get_brd_drug_to_name_dct():
     return brd_drug_to_name_dct
 
 # embedding_top_pathways.py
+# impute_drugless_embeddings.py
 def get_emb_node_lst():
     '''
     Returns a list of nodes that appear in the embedding data. Entities include
