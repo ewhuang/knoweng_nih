@@ -3,8 +3,9 @@
 from collections import OrderedDict
 import math
 import numpy as np
+import pandas as pd
 import random
-from scipy.stats import betai
+from scipy.special import betainc
 
 ### This file contains functions that parse the data files and return the 
 ### data objects that we work with in our scripts.
@@ -69,74 +70,107 @@ def get_path_to_gene_dct():
     return path_to_gene_dct, nci_gene_set
 
 # drug_pathway_fisher_correlation.py
-# correlation_top_pathways_kw.py
-def get_drug_to_dr_dct():
-    '''
-    Returns a dictionary mapping drugs to drug response values.
-    Key: drug -> str
-    Value: list of drug responses for the drug key -> list(float)
-    '''
-    drug_to_dr_dct = OrderedDict({})
-    resp_file = open('./data/auc_hgnc.tsv', 'r')
-    for i, line in enumerate(resp_file):
-        line = line.split()
-        # Header line contains patient ID's.
-        if i == 0:
-            patient_id_list = line[1:]
-            continue
-        # Each row is one drug's performance on each patient.
-        drug, resp_line = line[0], line[1:]
-        # Skip drugs that are unavailable for all patients.
-        if resp_line == ['NA'] * len(patient_id_list):
-            continue
-        assert len(resp_line) == len(patient_id_list)
-        assert 'BRD-' in drug
-        # Convert 'NA' strings to -666.
-        resp_line = [-666 if val == 'NA' else float(val) for val in resp_line]
-        assert drug not in drug_to_dr_dct
-        drug_to_dr_dct[drug] = np.array(resp_line)
-    resp_file.close()
-    return drug_to_dr_dct
+def get_dr_df():
+    dr_df = pd.read_csv('./data/auc_hgnc.tsv', sep='\t', header=0, index_col=0,
+        na_values='NA')
+    dr_df = dr_df.apply(pd.to_numeric)
+    return dr_df
+
+# # drug_pathway_fisher_correlation.py
+# # correlation_top_pathways_kw.py
+# def get_drug_to_dr_dct():
+#     '''
+#     Returns a dictionary mapping drugs to drug response values.
+#     Key: drug -> str
+#     Value: list of drug responses for the drug key -> list(float)
+#     '''
+#     drug_to_dr_dct = OrderedDict({})
+#     resp_file = open('./data/auc_hgnc.tsv', 'r')
+#     for i, line in enumerate(resp_file):
+#         line = line.split()
+#         # Header line contains patient ID's.
+#         if i == 0:
+#             patient_id_list = line[1:]
+#             continue
+#         # Each row is one drug's performance on each patient.
+#         drug, resp_line = line[0], line[1:]
+#         # Skip drugs that are unavailable for all patients.
+#         if resp_line == ['NA'] * len(patient_id_list):
+#             continue
+#         assert len(resp_line) == len(patient_id_list)
+#         assert 'BRD-' in drug
+#         # Convert 'NA' strings to -666.
+#         resp_line = [-666 if val == 'NA' else float(val) for val in resp_line]
+#         assert drug not in drug_to_dr_dct
+#         drug_to_dr_dct[drug] = np.array(resp_line)
+#     resp_file.close()
+#     return drug_to_dr_dct
+
+# # drug_pathway_fisher_correlation.py
+# def get_gene_expr_df():
+#     '''
+#     Return the gene expression table as a pandas dataframe.
+#     '''
+#     # Read the data frame.
+#     gene_expr_df = pd.read_csv('./data/gene_expression_hgnc.tsv', sep='\t',
+#         header=0, index_col=0)
+#     # Convert to numeric.
+#     gene_expr_df = gene_expr_df.apply(pd.to_numeric)
+#     # Check that there are no null values.
+#     assert not gene_expr_df.isnull().values.any()
+#     # Delete duplicate genes.
+#     gene_expr_df = gene_expr_df[~gene_expr_df.index.duplicated(keep='last')]
+#     # print gene_expr_df.loc[['TTL']]
+#     return gene_expr_df
 
 # drug_pathway_fisher_correlation.py
-# correlation_top_pathways_kw.py
-def get_gene_expr_mat():
-    '''
-    Returns a dictionary mapping genes to gene expression values.
-    Key: gene -> str
-    Value: list of gene expression values -> list(float)
-    '''
-    gene_expr_mat, gene_list = [], []
-    exp_file = open('./data/gene_expression_hgnc.tsv', 'r')
-    for i, line in enumerate(exp_file):
-        line = line.split()
-        # Header row contains patient ID's.
-        if i == 0:
-            # The first item is 'gid'. We skip it.
-            patient_id_list = line[1:]
-            continue
-        gene, expression_value_list = line[0], map(float, line[1:])
-        assert len(expression_value_list) == len(patient_id_list)
+def get_gene_df(fname):
+    gene_df = pd.read_csv('./data/%s' % fname, sep='\t', header=0, index_col=0,
+        na_values='NA')
 
-        # Take care of duplicate genes. Average existing expression rows.
-        if gene in gene_list:
-            # Only 'TTL' is the duplicate.
-            assert gene == 'TTL'
-            dup_idx = gene_list.index(gene)
-            # Average old row with current one.
-            # old_row = gene_expr_mat[dup_idx]
-            # TODO:
-            # mean_row = list(np.mean([expression_value_list, old_row], axis=0))
-            # Update the existing row.
-            # gene_expr_mat[dup_idx] = mean_row
-            gene_expr_mat[dup_idx] = expression_value_list
-        else:
-            # Only add a row and gene if it's a new gene.
-            gene_expr_mat += [expression_value_list]
-            gene_list += [gene]
-    exp_file.close()
-    assert len(gene_expr_mat) == len(gene_list)
-    return np.array(gene_expr_mat), gene_list
+    gene_df = gene_df.apply(pd.to_numeric)
+    gene_df = gene_df[~gene_df.index.duplicated(keep='last')]
+    return gene_df
+
+# # drug_pathway_fisher_correlation.py
+# # correlation_top_pathways_kw.py
+# def get_gene_expr_mat():
+#     '''
+#     Returns a dictionary mapping genes to gene expression values.
+#     Key: gene -> str
+#     Value: list of gene expression values -> list(float)
+#     '''
+#     gene_expr_mat, gene_list = [], []
+#     exp_file = open('./data/gene_expression_hgnc.tsv', 'r')
+#     for i, line in enumerate(exp_file):
+#         line = line.split()
+#         # Header row contains patient ID's.
+#         if i == 0:
+#             # The first item is 'gid'. We skip it.
+#             patient_id_list = line[1:]
+#             continue
+#         gene, expression_value_list = line[0], map(float, line[1:])
+#         assert len(expression_value_list) == len(patient_id_list)
+
+#         # Take care of duplicate genes. Average existing expression rows.
+#         if gene in gene_list:
+#             # Only 'TTL' is the duplicate.
+#             assert gene == 'TTL'
+#             dup_idx = gene_list.index(gene)
+#             # Average old row with current one.
+#             # old_row = gene_expr_mat[dup_idx]
+#             # TODO:
+#             # mean_row = list(np.mean([expression_value_list, old_row], axis=0))
+#             # Update the existing row.
+#             # gene_expr_mat[dup_idx] = mean_row
+#             gene_expr_mat[dup_idx] = expression_value_list
+#         else:
+#             # Only add a row and gene if it's a new gene.
+#             gene_expr_mat += [expression_value_list]
+#             gene_list += [gene]
+#     exp_file.close()
+#     assert len(gene_expr_mat) == len(gene_list)
+#     return np.array(gene_expr_mat), gene_list
 
 # def min_p_exp(p_val_lst):
 #     return 1 - math.pow((1 - min(p_val_lst)), len(p_val_lst))
@@ -340,5 +374,6 @@ def compute_p_val(r, n):
         prob = 0.0
     else:
         t_squared = r**2 * (df / ((1.0 - r) * (1.0 + r)))
-        prob = betai(0.5*df, 0.5, df/(df+t_squared))
+        # prob = betai(0.5*df, 0.5, df/(df+t_squared))
+        prob = betainc(0.5*df, 0.5, df/(df+t_squared))
     return prob

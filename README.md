@@ -34,7 +34,8 @@ $ python ensg_to_hgnc_conversion.py
 1.  Finds top pathways for the gene expression data.
 
     ```bash
-    $ python correlation_top_pathways_fisher.py top_k
+    <!-- $ python correlation_top_pathways_fisher.py top_k -->
+    $ python2.7 drug_pathway_fisher_correlation.py -s sortP -p 0.05 -i ge
     $ python correlation_top_pathways_kw.py
     ```
 
