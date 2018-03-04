@@ -6,6 +6,7 @@ from multiprocessing import Pool
 import numpy as np
 import operator
 import pandas as pd
+from pandas._libs import algos as libalgos
 from scipy.stats import fisher_exact, pearsonr
 # import sys
 import time
@@ -50,25 +51,60 @@ def get_gene_drug_pearson_dct(drug):
     '''
     # drug = dr_vector.index.values[0]
     dr_vector = dr_df.loc[[drug]]
-    num_genes = len(gene_df.index.values)
+
+    # Get the pairwise column correlations.
+    # corr_mat = pd.concat([dr_vector, gene_df]).transpose()
+    
+    # Get the values of the drug row. Remove first element, because it's the
+    # self correlation.
+    # print corr_mat.corr().loc[[drug]]['BRAF']
+    # exit()
+    # corr_values = corr_mat.corr().loc[[drug]].values[0][1:]
+    # corr_values = corr_mat.corr().loc[[drug]]
+    # print corr_values
+
+    # num_samples = len(list(gene_df))
+    num_genes, num_samples = gene_df.shape
+    # print list(gene_df)
+    # p = [file_operations.compute_p_val(pcc, num_samples) for pcc in corr_values]
+    # print np.array(p)
+    # exit() # TODO
+
+    # num_genes = len(gene_df.index.values)
     # Get list of bad sample names.
-    bad_dr_sample_lst = dr_vector.columns[dr_vector.isna().any()].tolist()
+    # bad_dr_sample_lst = dr_vector.columns[dr_vector.isna().any()].tolist()
 
     gene_drug_pearson_dct = {}
-    for gene, row in gene_df.iterrows():
-        bad_ge_sample_lst = [sample for sample in row.axes[0] if pd.isnull(row[sample])]
-        bad_samples_both = list(set(bad_dr_sample_lst).union(bad_ge_sample_lst))
+    # for gene, row in gene_df.iterrows():
+    for gene in gene_df.index.values:
+        drug_gene_df = pd.concat([dr_vector, gene_df.loc[[gene]]]).transpose().dropna()
+        pcc, p_value = pearsonr(drug_gene_df[drug], drug_gene_df[gene])
 
-        filtered_dr = np.array(dr_vector.drop(bad_samples_both, axis=1))[0]
-        filtered_row = np.array(row.drop(bad_samples_both))
+        # bad_ge_sample_lst = [sample for sample in row.axes[0] if pd.isnull(row[sample])]
+        # ge_vector = gene_df.loc[[gene]]
+        # bad_ge_sample_lst = ge_vector.columns[ge_vector.isna().any()].tolist()
+        # bad_samples_both = set(bad_dr_sample_lst).union(bad_ge_sample_lst)
 
-        pcc, p_value = pearsonr(filtered_dr, filtered_row)
+        # num_good_samples = num_samples - len(bad_samples_both)
+
+        # pcc = corr_values[gene].values[0]
+        # p_value = file_operations.compute_p_val(pcc, num_good_samples)
+        # p_value = pval[p_count]
+
+        # if gene == 'BRAF':
+        #     print gene, drug, pcc, p_value * num_genes
+        #     exit()
+        # filtered_dr = np.array(dr_vector.drop(bad_samples_both, axis=1))[0]
+        # filtered_row = np.array(row.drop(bad_samples_both))
+
+        # # pcc, p_value = pearsonr(filtered_dr, filtered_row)
         p_value *= num_genes
         if p_value < args.pearson_thresh:
             if args.sort_value == 'sortCorr':
                 gene_drug_pearson_dct[(gene, drug)] = pcc
             else:
                 gene_drug_pearson_dct[(gene, drug, pcc)] = p_value
+    return gene_drug_pearson_dct
 
     #     # bad_ge_sample_lst = row.columns[row.isna().any()].tolist()
     #     # print bad_ge_sample_lst
@@ -101,7 +137,7 @@ def get_gene_drug_pearson_dct(drug):
     #             gene_drug_pearson_dct[(gene, drug)] = pcc
     #         else:
     #             gene_drug_pearson_dct[(gene, drug, pcc)] = p_value
-    return gene_drug_pearson_dct
+    # return gene_drug_pearson_dct
 
 # def get_drug_path_fisher_dct(drug, gene_universe, corr_genes, path_to_gene_dct):
 #     '''
@@ -201,12 +237,12 @@ def write_num_dcg(gene_drug_pearson_dct):
 def parse_args():
     global args
     parser = argparse.ArgumentParser()
+    parser.add_argument('-i', '--input_file', required=True, type=str,
+        choices=['demeter', 'rsa', 'ataris', 'ge'], help='Type of file to use for correlations.')
     parser.add_argument('-s', '--sort_value', help='Value by which to sort.',
         required=True, choices=['sortCorr', 'sortP'])
     parser.add_argument('-p', '--pearson_thresh', required=True, type=float,
         help='Pearson threshold that determines a significant correlation.')
-    parser.add_argument('-i', '--input_file', required=True, type=str,
-        choices=['demeter', 'rsa', 'ataris', 'ge'], help='Type of file to use for correlations.')
     args = parser.parse_args()
 
 def main():
@@ -251,7 +287,8 @@ def main():
     # num_low_p = 0
 
     # Dictionaries to write out to file.
-    gene_drug_pearson_dct, drug_path_fisher_dct = {}, {}
+    # gene_drug_pearson_dct, drug_path_fisher_dct = {}, {}
+    gene_drug_pearson_dct = {}
 
     pool = Pool(processes=20)
     dcts = pool.map(get_gene_drug_pearson_dct, dr_df.index.values)

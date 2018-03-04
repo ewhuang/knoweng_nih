@@ -52,7 +52,7 @@ $ python ensg_to_hgnc_conversion.py
     python impute_drugless_embeddings.py
     ```
 
-2.  Here, we can decide whether to use abs(cos) * corr or just (cos * corr) when
+3.  Here, we can decide whether to use abs(cos) * corr or just (cos * corr) when
     computing a drug-pathway score (line 110).
 
     ```bash

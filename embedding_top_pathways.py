@@ -1,6 +1,7 @@
 ### Author: Edward Huang
 
 # from collections import OrderedDict
+import argparse
 import file_operations
 import numpy as np
 import operator
@@ -11,12 +12,13 @@ import time
 
 ### For each drug, we take the top K most correlated genes, as computed by the
 ### drug_pathway_fisher_correlation.py script. Then, for each drug-pathway pair,
-### we compute a NetPath score by multiplying each gene's correlation to that 
+### we compute a PACER score by multiplying each gene's correlation to that 
 ### drug with the gene-pathway cosine similarity scores.
 ### Run time: 6 minutes per embedding file.
 
-def get_embedding_dct(dimension, suffix, fraction, emb_node_lst, all_genes,
-    path_to_gene_dct):
+# def get_embedding_dct(dimension, suffix, fraction, emb_node_lst, all_genes,
+#     path_to_gene_dct):
+def get_embedding_dct(filename, emb_node_lst, all_genes, path_to_gene_dct):
     '''
     Returns a dictionary.
     Key: node (either a gene or a pathway) -> str
@@ -24,20 +26,20 @@ def get_embedding_dct(dimension, suffix, fraction, emb_node_lst, all_genes,
     '''
     node_embedding_dct = {}
 
-    if isPpi:
-        data_folder = './data/embedding' # With PPI.
-        filename = '%s/ppi_6_net_%s_%s.%s' % (data_folder, dimension, fraction,
-            suffix)
-    else:
-        data_folder = './embedding' # string_experimental
-        filename = '%s/string_experimental_%s_%s.%s' % (data_folder, dimension,
-        fraction, suffix)
+    # if isPpi:
+    #     data_folder = './data/embedding' # With PPI.
+    #     filename = '%s/ppi_6_net_%s_%s.%s' % (data_folder, dimension, fraction,
+    #         suffix)
+    # else:
+    #     data_folder = './embedding' # string_experimental
+    #     filename = '%s/string_experimental_%s_%s.%s' % (data_folder, dimension,
+    #     fraction, suffix)
 
     f = open(filename, 'r')
     for i, line in enumerate(f):
         # Each row in the file maps to the row in gene_pathway_id.txt.
         node = emb_node_lst[i]
-        # Skip genes and pathways that aren't in expression or NCI pathways.
+        # Skip genes and pathways that are in neither expression or NCI pathways.
         if (node not in all_genes) and (node not in path_to_gene_dct):
             continue
         # Convert lines to floats.
@@ -86,7 +88,7 @@ def compute_drug_path_score(drug, gene_p_val_dct, node_embedding_dct,
             # Correlation between gene and drug response.
             gene_drug_corr = gene_p_val_dct[gene]
             cos = cosine_matrix[path_i, gene_i]
-            if cos_abs:
+            if args.cos_abs:
                 drug_path_score += abs(cos * gene_drug_corr)
             else:
                 drug_path_score += cos * gene_drug_corr
@@ -147,63 +149,91 @@ def compute_drug_pathway_scores():
     emb_node_lst = file_operations.get_emb_node_lst()
     # Find the most significantly correlated genes for each drug.
     all_genes, drug_corr_genes_dct = file_operations.get_drug_corr_genes_dct(
-        top_k, emb_node_lst, sort_value, pearson_thresh)
+        args.input_file, args.top_k, emb_node_lst, args.sort_value,
+        args.pearson_thresh)
 
-    dimension_list = map(str, [50, 100, 500, 1000])
-    fraction_list, suffix_list = map(str, [0.3, 0.5, 0.8]), ['U', 'US']
-    if isPpi:
-        dimension_list, fraction_list, suffix_list = ['50'], ['0.8'], ['U']
+    # dimension_list = map(str, [50, 100, 500, 1000])
+    # fraction_list, suffix_list = map(str, [0.3, 0.5, 0.8]), ['U', 'US']
+    # if isPpi:
+    #     dimension_list, fraction_list, suffix_list = ['50'], ['0.8'], ['U']
 
-    for dimension in dimension_list:
-        for fraction in fraction_list:
-            for suffix in suffix_list:
-                # Get the embedding vectors for each node (gene or pathway).
-                node_embedding_dct = get_embedding_dct(dimension, suffix,
-                    fraction, emb_node_lst, all_genes, path_to_gene_dct)
+    # for dimension in dimension_list:
+    #     for fraction in fraction_list:
+    #         for suffix in suffix_list:
+    for subdir, dirs, files in os.walk('./data/embedding_new'):
+        for fname in files:
+            # Get the embedding vectors for each node (gene or pathway).
+            # node_embedding_dct = get_embedding_dct(dimension, suffix,
+            #     fraction, emb_node_lst, all_genes, path_to_gene_dct)
+            if 'no_drug' in fname:
+                continue
+            new_fname = '%s/%s' % (subdir, fname)
+            node_embedding_dct = get_embedding_dct(new_fname, emb_node_lst,
+                all_genes, path_to_gene_dct)
 
-                # Calculate the score for each drug-pathway pair.
-                drug_path_score_dct = {}
-                for drug in drug_corr_genes_dct:
-                    gene_p_val_dct = drug_corr_genes_dct[drug]
-                    drug_path_score_dct.update(compute_drug_path_score(drug,
-                        gene_p_val_dct, node_embedding_dct, path_to_gene_dct))
+            # Calculate the score for each drug-pathway pair.
+            drug_path_score_dct = {}
+            for drug in drug_corr_genes_dct:
+                gene_p_val_dct = drug_corr_genes_dct[drug]
+                drug_path_score_dct.update(compute_drug_path_score(drug,
+                    gene_p_val_dct, node_embedding_dct, path_to_gene_dct))
 
-                # Sort the score dictionary, and write to file.
-                drug_path_score_dct = sorted(drug_path_score_dct.items(),
-                    key=operator.itemgetter(1), reverse=True)
-                
-                results_folder = './results/embedding/'
-                if not os.path.exists(results_folder):
-                    os.makedirs(results_folder)
+            # Sort the score dictionary, and write to file.
+            drug_path_score_dct = sorted(drug_path_score_dct.items(),
+                key=operator.itemgetter(1), reverse=True)
+            
+            # results_folder = './results/embedding/'
+            results_folder = './results/embedding_new/'
+            if not os.path.exists(results_folder):
+                os.makedirs(results_folder)
 
-                input_suffix = '%s_%g' % (sort_value, pearson_thresh)
-                if cos_abs:
-                    input_suffix += '_cosAbs'
-                else:
-                    input_suffix += '_cosNoAbs'
-                if isPpi:
-                    out_fname = 'top_pathways_ppi_%s_%s_%s_embed_%d_%s.txt' % (
-                        dimension, fraction, suffix, top_k, input_suffix)
-                else:
-                    out_fname = 'top_pathways_%s_%s_%s_embed_%d_%s.txt' % (
-                        dimension, fraction, suffix, top_k, input_suffix)
-                write_top_pathway_file(drug_path_score_dct, results_folder,
-                    out_fname)
+            # input_suffix = '%s_%g' % (args.sort_value, args.pearson_thresh)
+            # if args.cos_abs:
+            #     input_suffix += '_cosAbs'
+            # else:
+            #     input_suffix += '_cosNoAbs'
+            # if isPpi:
+            #     out_fname = 'top_pathways_ppi_%s_%s_%s_embed_%d_%s.txt' % (
+            #         dimension, fraction, suffix, top_k, input_suffix)
+            # else:
+            #     out_fname = 'top_pathways_%s_%s_%s_embed_%d_%s.txt' % (
+            #         dimension, fraction, suffix, top_k, input_suffix)
+            out_fname = '%s_top_pathways_%s_%s_%g_%d_%s' % (fname,
+                args.input_file, args.sort_value, args.pearson_thresh,
+                args.top_k, args.cos_abs)
+            write_top_pathway_file(drug_path_score_dct, results_folder,
+                out_fname)
 
-                write_inverse_rankings(results_folder, out_fname)
+            write_inverse_rankings(results_folder, out_fname)
+
+def parse_args():
+    global args
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-i', '--input_file', required=True, type=str,
+        choices=['demeter', 'rsa', 'ataris', 'ge'], help='Type of file to use for correlations.')
+    parser.add_argument('-s', '--sort_value', help='Value by which to sort.',
+        required=True, choices=['sortCorr', 'sortP'])
+    parser.add_argument('-p', '--pearson_thresh', required=True, type=float,
+        help='Pearson threshold that determines a significant correlation.')
+    parser.add_argument('-k', '--top_k', help='Number of most correlated genes for each drug',
+        required=True, type=int)
+    parser.add_argument('-c', '--cos_abs', required=True, type=bool,
+        help='Whether or not to use the absolute value of the cosine similarity.')
+    args = parser.parse_args()
 
 def main():
-    if (len(sys.argv) not in [5, 6]):
-        print ('Usage: %s top_k sortCorr/sortP pearson_thresh cos_abs '
-            'ppi<optional>' % (sys.argv[0]))
-        exit(1)
-    global isPpi, top_k, sort_value, pearson_thresh, cos_abs
-    isPpi = len(sys.argv) == 6
-    top_k = int(sys.argv[1])
-    sort_value = sys.argv[2]
-    assert sort_value in ['sortCorr', 'sortP']
-    pearson_thresh = float(sys.argv[3])
-    cos_abs = sys.argv[4] == 'cos_abs'
+    parse_args()
+    # if (len(sys.argv) not in [5, 6]):
+    #     print ('Usage: %s top_k sortCorr/sortP pearson_thresh cos_abs '
+    #         'ppi<optional>' % (sys.argv[0]))
+    #     exit(1)
+    # global isPpi, top_k, sort_value, pearson_thresh, cos_abs
+    # isPpi = len(sys.argv) == 6
+    # top_k = int(sys.argv[1])
+    # sort_value = sys.argv[2]
+    # assert sort_value in ['sortCorr', 'sortP']
+    # pearson_thresh = float(sys.argv[3])
+    # cos_abs = sys.argv[4] == 'cos_abs'
     
     compute_drug_pathway_scores()
 

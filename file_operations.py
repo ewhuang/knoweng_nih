@@ -297,7 +297,8 @@ def get_emb_node_lst():
     return emb_node_lst
 
 # embedding_top_pathways.py
-def get_drug_corr_genes_dct(top_k, emb_node_lst, sort_value, pearson_thresh):
+def get_drug_corr_genes_dct(input_file, top_k, emb_node_lst, sort_value,
+    pearson_thresh):
     '''
     Returns a dictionary finding top correlated genes for each drug.
     Key: drug -> str
@@ -309,14 +310,14 @@ def get_drug_corr_genes_dct(top_k, emb_node_lst, sort_value, pearson_thresh):
     all_genes = set([])
     drug_corr_genes_dct = {}
 
-    f = open('./results/gene_drug_pearson_%s_%g.txt' % (sort_value,
-        pearson_thresh), 'r')
+    f = open('./results/%s_gene_drug_pearson_%s_%g.txt' % (input_file,
+        sort_value, pearson_thresh), 'r')
     for i, line in enumerate(f):
         if i == 0: # Skip header.
             continue
-        # TODO: no p-value info right now.
-        # gene, drug, correlation, p_val = line.split()
-        gene, drug, correlation = line.split()
+        # TODO: there is p-value info right now.
+        gene, drug, correlation, p_val = line.split()
+        # gene, drug, correlation = line.split()
         if gene not in emb_node_lst:
             continue
         # The gene appears in both expression and embedding.
@@ -324,6 +325,7 @@ def get_drug_corr_genes_dct(top_k, emb_node_lst, sort_value, pearson_thresh):
         # Initialize the dictionary.
         if drug not in drug_corr_genes_dct:
             drug_corr_genes_dct[drug] = {}
+        # Stop adding genes when we've reached top_k genes for the drug.
         if len(drug_corr_genes_dct[drug]) == top_k:
             continue
         drug_corr_genes_dct[drug][gene] = float(correlation)
@@ -348,24 +350,24 @@ def get_corr_drug_random_genes(top_k, emb_node_lst):
 
 # drug_pathway_fisher_correlation.py
 # correlation_top_pathways_kw.py
-def generate_correlation_map(x, y):
-    '''
-    Correlate each n with each m, where x is an N x T matrix, and y is an M x T
-    matrix.
-    From: http://stackoverflow.com/questions/30143417/
-    '''
-    mu_x = x.mean(1)
-    mu_y = y.mean(1)
-    n = x.shape[1]
-    if n != y.shape[1]:
-        raise ValueError('x and y must have the same number of timepoints.')
-    s_x = x.std(1, ddof=n - 1)
-    s_y = y.std(1, ddof=n - 1)
-    cov = np.dot(x, y.T) - n * np.dot(mu_x[:, np.newaxis], mu_y[np.newaxis, :])
-    return (cov / np.dot(s_x[:, np.newaxis], s_y[np.newaxis, :]))[0]
+# def generate_correlation_map(x, y):
+#     '''
+#     Correlate each n with each m, where x is an N x T matrix, and y is an M x T
+#     matrix.
+#     From: http://stackoverflow.com/questions/30143417/
+#     '''
+#     mu_x = x.mean(1)
+#     mu_y = y.mean(1)
+#     n = x.shape[1]
+#     if n != y.shape[1]:
+#         raise ValueError('x and y must have the same number of timepoints.')
+#     s_x = x.std(1, ddof=n - 1)
+#     s_y = y.std(1, ddof=n - 1)
+#     cov = np.dot(x, y.T) - n * np.dot(mu_x[:, np.newaxis], mu_y[np.newaxis, :])
+#     return (cov / np.dot(s_x[:, np.newaxis], s_y[np.newaxis, :]))[0]
 
-# drug_pathway_fisher_correlation.py
-# correlation_top_pathways_kw.py
+# # drug_pathway_fisher_correlation.py
+# # correlation_top_pathways_kw.py
 def compute_p_val(r, n):
     '''
     Given a Pearson correlation coefficient and a sample size, compute the p-
